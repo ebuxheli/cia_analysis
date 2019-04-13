@@ -54,6 +54,7 @@ dataCountry <- select(data, c("YEAR", "COW", "country", "ucdp_type3", "gtd", "lo
 # tscsPlot(data.out, cs = "670", main = "GTD for Saudi Arabia", var = "gtd", ylim = c(-150, 150))
 ```
 
+# Figure 1
 ```{r fig1}
 #--------------------------------------------------------------------
 # In this section we plot six figures showing human rights trends across 
@@ -126,6 +127,64 @@ ggplot(graph1, aes(x=YEAR, y=value)) +
 #         text = element_text(size = 13),
 #         axis.title = element_text(size = 13), axis.text = element_text(size = 10))
 ```
+
+# Figure 2
+```{r fig2}
+# Compute global-year averages for democracies and non-democracies for all DVs
+trends <- data %>% group_by(YEAR, active_d) %>% 
+  summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
+            "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
+            "State Department Score (PTS)" = mean(State, na.rm = TRUE), 
+            "Amnesty International Score (PTS)"  = mean(Amnesty, na.rm = TRUE),
+            "Extrajudicial Killing Score (CIRI)" = mean(KILL, na.rm = TRUE),
+            "Political Imprisonment Score (CIRI)" = mean(POLPRIS, na.rm = TRUE),
+            "Torture Score (CIRI)" = mean(TORT, na.rm = TRUE), 
+            "Disappearance Score (CIRI)" = mean(DISAP, na.rm = TRUE))
+
+graph_data <- gather(trends, type, value, DVs) # Reformat data for graphs 
+graph_data$type <- factor(graph_data$type, levels = DVs) # Converts labels to factors to order plot facets 
+
+# Relabel active_d for legend
+for (i in 1:length(graph_data$active_d)){    
+  if (graph_data$active_d[i] == 0){ 
+    graph_data$active_d[i] <- "Other States" 
+  }else if (graph_data$active_d[i] == 1){
+    graph_data$active_d[i] <- "Active Participants"
+  }
+}
+
+# Subset data to be graphed
+graph1 <- subset(graph_data, (graph_data$type %in% DVs[1:4]))
+graph2 <- subset(graph_data, (graph_data$type %in% DVs[5:8]))
+
+# Construct matrices to call min and max values for y-axis on facet plots 
+facetlims1 <- as.data.frame(cbind(YEAR = c(rep(1992:2011, times = 4, each = 2)), 
+                                  active_d = c(rep(0:1, times = 80)),
+                                  value = c(rep(c(0,8), 20), rep(c(-0.5,1), 20), rep(c(0,2), 20), rep(c(0,2), 20))))
+facetlims2 <- as.data.frame(cbind(YEAR = c(rep(1992:2011, times = 4, each = 2)),
+                                  active_d = c(rep(0:1, times = 80)),
+                                  value = c(rep(c(1,5), 20), rep(c(1,5), 20), rep(c(0,2), 20), rep(c(0,2), 20))))
+# Assign variable names
+facetlims1$type <- rep(DVs[1:4], times = 1, each = 40)
+facetlims2$type <- rep(DVs[5:8], times = 1, each = 40)
+# Converts labels to factors to order plot facets 
+facetlims1$type <- factor(facetlims1$type, levels = DVs) 
+facetlims2$type <- factor(facetlims2$type, levels = DVs)
+
+# Create plots
+## Figure 2
+ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +   
+  geom_line(aes(linetype = factor(active_d))) + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
+  geom_blank(data = facetlims1) + 
+  labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
+  #ggtitle("Average Respect for Human Rights by Participation, 1992-2011") +
+  geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
+  theme(legend.position= "bottom", legend.title=element_blank(), 
+        plot.title = element_text(hjust = 0.5, size=14), 
+        text = element_text(size = 13),
+        axis.title = element_text(size = 13), axis.text = element_text(size = 10))
+```
+
 
 
 
