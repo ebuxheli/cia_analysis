@@ -115,17 +115,7 @@ ggplot(graph1, aes(x=YEAR, y=value)) +
         text = element_text(size = 13),
         axis.title = element_text(size = 13), axis.text = element_text(size = 10))
 
-# This plot was not used in the actual paper
-# ggplot(graph2, aes(x=YEAR, y=value)) +
-#   geom_line() + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
-#   #ggtitle("Respect for Human Rights, 1992-2011") +
-#   labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
-#   geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
-#   geom_blank(data = facetlims2) +
-#   theme(legend.position= "bottom", legend.title=element_blank(), 
-#         plot.title = element_text(hjust = 0.5, size=14), 
-#         text = element_text(size = 13),
-#         axis.title = element_text(size = 13), axis.text = element_text(size = 10))
+ggsave(paste0("present/fig1.png"), width = 9, height = 4.5, plot = last_plot(), device = "png", dpi = "retina")
 ```
 
 # Figure 2
@@ -183,6 +173,7 @@ ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +
         plot.title = element_text(hjust = 0.5, size=14), 
         text = element_text(size = 13),
         axis.title = element_text(size = 13), axis.text = element_text(size = 10))
+ggsave(paste0("present/fig2.png"), width = 9, height = 4.5, plot = last_plot(), device = "png", dpi = "retina")
 ```
 
 # Figure 3
