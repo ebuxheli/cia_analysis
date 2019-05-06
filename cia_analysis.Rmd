@@ -4,6 +4,8 @@ author: "Enxhi Buxheli"
 output: pdf_document
 ---
 
+## TODO: Add bibliography
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
@@ -19,32 +21,43 @@ library("plm")
 library("Amelia")
 library("MKmisc")
 library("lmtest")
+library("janitor")
 ```
 
 ```{r, results='asis', cache=TRUE}
 ## Data: There are three datasets used in this analysis: 
-# 1. "pic_data_not_imputed.RData" - this is the initial dataset before imputation
-# 2. "pic_data_imputed.RData" - this is the initial imputed dataset, contraining observations from 1991-2011 
+# 1. "pic_data_not_imputed.RData" - this is the initial dataset before
+#     imputation 
+# 2. "pic_data_imputed.RData" - this is the initial imputed dataset, contraining
+#     observations from 1991-2011 
 # 3. "pic_data.RData" - this is the final dataset used in analysis
 
+
+# Loading in the data created by author of the paper (unable to run the data
+# myself because of the 40 hour run time necessary)
+
 # Descriptive Statistics of Non-Imputed Dataset
-load("dataverse_files/pic_data_not_imputed.RData") # Load unimputed data
-stargazer(data, digits = 3) # Descriptive statistics of unimputed data
+## Non-imputed data is the data without inferences made about the data in the dataset
+load("dataverse_files/pic_data_not_imputed.RData") 
 
 # Descriptative Statistics Imputed Dataset
+## Imputed data includes data that includes inferences about data in the dataset
+## This data is loaded in as a "large amelia" which is the way that the missing
+## data has been imputed. This is a statistical computing technique.
+### This dataset consists of 9 different imputations. I will only be using 1 of
+### these.
 load("dataverse_files/pic_data_imputed.RData") # Load Imputed Data
-imps <- length(data.out$imputations) # Set number of imputations
 
-# Not quite sure what the missmap is for. I believe it's to see how much data
-# there is and the percentage missing for data diagnostics and quality checks. 
-# I don't think this will be necessary for the replcation.
-# missmap(data.out, legend = F, col = c("indianred", "dodgerblue"),  
-#         main = "Missing Values in Initial, Non-Imputed, Dataset",
-#         y.labels = NULL, y.at = NULL, 
-#         y.cex = 0.6, x.cex = 0.85, margins = c(0, 0))
+### The following is original because the data that I had downloaded had some
+### maddeningly named variables with strange capitalizations that were
+### unnecessary. The below just cleans up the names of variables in the dataset
+data <- data %>% clean_names()
+
+# Setting the number of imputations...
+imps <- length(data.out$imputations) # Set number of imputations
 ```
 
-```{r, cache=TRUE}
+```{r, cache=TRUE, include=FALSE}
 dataCountry <- select(data, c("YEAR", "COW", "country", "ucdp_type3", "gtd", "log_USmilaid"))
 
 # TSCS Plots of Saudi Arabia and Niger. Need to look up what TSCS plots are and
@@ -55,7 +68,7 @@ dataCountry <- select(data, c("YEAR", "COW", "country", "ucdp_type3", "gtd", "lo
 ```
 
 # Figure 1
-```{r fig1, cache=TRUE}
+```{r fig1, cache=TRUE, include=FALSE}
 #--------------------------------------------------------------------
 # In this section we plot six figures showing human rights trends across 
 # eight indicators. The first two figures (Part A) are of global human rights trends; 
@@ -119,7 +132,7 @@ ggsave(paste0("present/fig1.png"), width = 9, height = 4.5, plot = last_plot(), 
 ```
 
 # Figure 2
-```{r fig2, cache=TRUE}
+```{r fig2, cache=TRUE, include=FALSE}
 # Compute global-year averages for democracies and non-democracies for all DVs
 trends <- data %>% group_by(YEAR, active_d) %>% 
   summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
@@ -177,7 +190,7 @@ ggsave(paste0("present/fig2.png"), width = 9, height = 4.5, plot = last_plot(), 
 ```
 
 # Figure 3
-```{r fig3, cache=TRUE}
+```{r fig3, cache=TRUE, include=FALSE}
 # Compute global-year averages for democracies and non-democracies for all DVs
 trends <- data %>% group_by(YEAR, active_d) %>% 
   filter(below_polity == 1) %>% 
@@ -224,7 +237,7 @@ ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +
         axis.title = element_text(size = 13), axis.text = element_text(size = 10)) 
 ```
 
-```{r, include=FALSE, cache=TRUE}
+```{r, include=FALSE, cache=TRUE, include=FALSE}
 #imputation junk not included in the actual article
 # ##################################################
 # # Section 4. Difference-of-Means and Balance Table
@@ -302,7 +315,7 @@ ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +
 # }
 ```
 
-```{r table23, results='asis'}
+```{r table23, results='asis', include=FALSE}
 ############################################
 # Section 4. Linear Models
 ############################################
