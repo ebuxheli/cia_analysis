@@ -64,7 +64,8 @@ data_analyze <- (data$imputations[[1]] + data$imputations[[2]] +
                    data$imputations[[7]] + data$imputations[[8]] + 
                    data$imputations[[9]])/imps
 
-# Joining the datasets and cleaning up variable names for sanity sake.
+# Joining the datasets and cleaning up variable names for sanity sake (the
+# varying capitalizations of variable names was maddening)
 data_final <- inner_join(data_country, data_analyze, 
                          by = "COW", suffix = c(".c", ".a")) %>% 
   select(-country.a, country = country.c) %>% 
@@ -73,173 +74,171 @@ data_final <- inner_join(data_country, data_analyze,
 
 
 # Figure 1
-```{r fig1, cache=TRUE, include=FALSE}
-#--------------------------------------------------------------------
-# In this section we plot six figures showing human rights trends across 
-# eight indicators. The first two figures (Part A) are of global human rights trends; 
-# the second two (Part B) break global trends down by participation; and the final 
-# two (Part C) compare at the human rights practices of non-democracies that 
-# participated in the program with those that did not. 
-#--------------------------------------------------------------------
+```{r fig1, cache=TRUE, include=TRUE}
+### TODO: FIGURE OUT A BETTER NAMING CONVENTION FOR THE GRAPHS TO MAKE IT EASIER
+### TO CODE AND SEE.
 
-load("dataverse_files/pic_data.RData") # Load final dataset and take average of imputed datasets for plotting (same as above)
-data.out <- data
+# Plotting figure 1 
 
-data <- data.out$imputations[[1]] #for intial run. See original code for actual mean calculations.
-
-#--------------------------------------------
-# Part A. Plotting Global Human Rights Trends 
-#--------------------------------------------
-
-# Compute global-year averages for all DVs
-trends <- data %>% group_by(YEAR) %>% 
-  summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
+# Computing global-year averages for relevant variables
+trends <- data_final %>% 
+  group_by(year) %>% 
+  summarise("Physical Integrity Score (CIRI)"      = mean(physint, na.rm = TRUE),
             "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
-            "State Department Score (PTS)" = mean(State, na.rm = TRUE), 
-            "Amnesty International Score (PTS)"  = mean(Amnesty, na.rm = TRUE),
-            "Extrajudicial Killing Score (CIRI)" = mean(KILL, na.rm = TRUE),
-            "Political Imprisonment Score (CIRI)" = mean(POLPRIS, na.rm = TRUE),
-            "Torture Score (CIRI)" = mean(TORT, na.rm = TRUE), 
-            "Disappearance Score (CIRI)" = mean(DISAP, na.rm = TRUE))
-# List of DV names
-DVs <- c("Physical Integrity Score (CIRI)", "Latent Variable Model Score (Fariss)", "Disappearance Score (CIRI)", "Political Imprisonment Score (CIRI)", "Amnesty International Score (PTS)", "State Department Score (PTS)", "Extrajudicial Killing Score (CIRI)", "Torture Score (CIRI)")
-graph_data <- gather(trends, type, value, DVs) # Reformat data for graphs 
-graph_data$type <- factor(graph_data$type, levels = DVs) # Converts labels to factors to order plot facets 
+            "Political Imprisonment Score (CIRI)"  = mean(polpris, na.rm = TRUE),
+            "Disappearance Score (CIRI)"           = mean(disap, na.rm = TRUE))
 
-# The following code creates two dataframes used to set the y-axis range on the facet plots 
-facetlims1 <- as.data.frame(cbind(YEAR = c(rep(1992:2011, times = 4)), 
-                                  value = c(rep(c(0,8), 10), rep(c(-0.5,1), 10), rep(c(0,2), 10), rep(c(0,2), 10))))
-facetlims2 <- as.data.frame(cbind(YEAR = c(rep(1992:2011, times = 4)),
-                                  value = c(rep(c(1,5), 10), rep(c(1,5), 10), rep(c(0,2), 10), rep(c(0,2), 10))))
-facetlims1$type <- rep(DVs[1:4], times = 1, each = 20) # Assign variable names
-facetlims2$type <- rep(DVs[5:8], times = 1, each = 20)
-facetlims1$type <- factor(facetlims1$type, levels = DVs) # Converts labels to factors to order plot facets 
-facetlims2$type <- factor(facetlims2$type, levels = DVs)
+# List of variable names
+var_names <- c("Physical Integrity Score (CIRI)", 
+               "Latent Variable Model Score (Fariss)", 
+               "Disappearance Score (CIRI)", 
+               "Political Imprisonment Score (CIRI)")
 
-# Subset data to be graphed
-graph1 <- subset(graph_data, (graph_data$type %in% DVs[1:4]))
-graph2 <- subset(graph_data, (graph_data$type %in% DVs[5:8]))
+# Formats the data to be graphed and makes the data facet on var_name
+graph_data <- gather(trends, type, value, var_names)  
+graph_data$type <- factor(graph_data$type, levels = var_names)
 
-# Create plots
-## This is the plot for figure 1
-ggplot(graph1, aes(x=YEAR, y=value)) +
-  geom_line() + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
-  #ggtitle("Respect for Human Rights, 1992-2011") +
-  labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
-  geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
-  geom_blank(data = facetlims1) +
-  theme(legend.position= "bottom", legend.title=element_blank(), 
+# Creates a tibble with the variable names and the plot limits for each of the
+# different plots. Also standardizes the year limits.
+var_limits <- as_tibble(cbind(year = c(rep(1992:2011, times = 4)), 
+                              value = c(rep(c(0, 8),    10), 
+                                        rep(c(-0.5, 1), 10), 
+                                        rep(c(0, 2),    10), 
+                                        rep(c(0, 2),    10))))
+
+# Assign variable names
+var_limits$type <- rep(var_names[1:4], times = 1, each = 20) 
+
+# Converts labels to factors to order plot facets 
+var_limits$type <- factor(var_limits$type, levels = var_names) 
+
+## TOutputting plot for figure 1
+ggplot(graph_data, aes(x = year, y = value)) +
+  geom_line() + 
+  geom_vline(xintercept = seq(2001, 2005, by = 0.001), 
+             colour = "grey", linetype = "solid", 
+             alpha = 0.01) +
+  geom_blank(data = var_limits) +
+  facet_wrap(~type, ncol = 2, scales = "free") +
+  labs(x = "Year", 
+       y = "Lower Score = More Abuse; Higher Score = More Respect") +
+  theme_bw() + 
+  theme(legend.position = "bottom", legend.title = element_blank(), 
         plot.title = element_text(hjust = 0.5, size=14), 
-        text = element_text(size = 13),
-        axis.title = element_text(size = 13), axis.text = element_text(size = 10))
+        text = element_text(size = 13, family = "Times"),
+        axis.title = element_text(size = 10), axis.text = element_text(size = 10))
 
-ggsave(paste0("present/fig1.png"), width = 9, height = 4.5, plot = last_plot(), device = "png", dpi = "retina")
+# Saving the plot output for the presentation
+ggsave(paste0("present/fig1.png"), 
+       width = 9, height = 4.5, 
+       plot = last_plot(), 
+       device = "png", dpi = "retina")
 ```
 
 # Figure 2
 ```{r fig2, cache=TRUE, include=FALSE}
-# Compute global-year averages for democracies and non-democracies for all DVs
-trends <- data %>% group_by(YEAR, active_d) %>% 
-  summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
-            "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
-            "State Department Score (PTS)" = mean(State, na.rm = TRUE), 
-            "Amnesty International Score (PTS)"  = mean(Amnesty, na.rm = TRUE),
-            "Extrajudicial Killing Score (CIRI)" = mean(KILL, na.rm = TRUE),
-            "Political Imprisonment Score (CIRI)" = mean(POLPRIS, na.rm = TRUE),
-            "Torture Score (CIRI)" = mean(TORT, na.rm = TRUE), 
-            "Disappearance Score (CIRI)" = mean(DISAP, na.rm = TRUE))
-
-graph_data <- gather(trends, type, value, DVs) # Reformat data for graphs 
-graph_data$type <- factor(graph_data$type, levels = DVs) # Converts labels to factors to order plot facets 
-
-# Relabel active_d for legend
-for (i in 1:length(graph_data$active_d)){    
-  if (graph_data$active_d[i] == 0){ 
-    graph_data$active_d[i] <- "Other States" 
-  }else if (graph_data$active_d[i] == 1){
-    graph_data$active_d[i] <- "Active Participants"
-  }
-}
-
-# Subset data to be graphed
-graph1 <- subset(graph_data, (graph_data$type %in% DVs[1:4]))
-graph2 <- subset(graph_data, (graph_data$type %in% DVs[5:8]))
-
-# Construct matrices to call min and max values for y-axis on facet plots 
-facetlims1 <- as.data.frame(cbind(YEAR = c(rep(1992:2011, times = 4, each = 2)), 
-                                  active_d = c(rep(0:1, times = 80)),
-                                  value = c(rep(c(0,8), 20), rep(c(-0.5,1), 20), rep(c(0,2), 20), rep(c(0,2), 20))))
-facetlims2 <- as.data.frame(cbind(YEAR = c(rep(1992:2011, times = 4, each = 2)),
-                                  active_d = c(rep(0:1, times = 80)),
-                                  value = c(rep(c(1,5), 20), rep(c(1,5), 20), rep(c(0,2), 20), rep(c(0,2), 20))))
-# Assign variable names
-facetlims1$type <- rep(DVs[1:4], times = 1, each = 40)
-facetlims2$type <- rep(DVs[5:8], times = 1, each = 40)
-# Converts labels to factors to order plot facets 
-facetlims1$type <- factor(facetlims1$type, levels = DVs) 
-facetlims2$type <- factor(facetlims2$type, levels = DVs)
-
-# Create plots
-## Figure 2
-ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +   
-  geom_line(aes(linetype = factor(active_d))) + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
-  geom_blank(data = facetlims1) + 
-  labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
-  #ggtitle("Average Respect for Human Rights by Participation, 1992-2011") +
-  geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
-  theme(legend.position= "bottom", legend.title=element_blank(), 
-        plot.title = element_text(hjust = 0.5, size=14), 
-        text = element_text(size = 13),
-        axis.title = element_text(size = 13), axis.text = element_text(size = 10))
-ggsave(paste0("present/fig2.png"), width = 9, height = 4.5, plot = last_plot(), device = "png", dpi = "retina")
+# # Compute global-year averages for democracies and non-democracies for all var_names
+# trends <- data %>% group_by(year, active_d) %>% 
+#   summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
+#             "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
+#             "State Department Score (PTS)" = mean(State, na.rm = TRUE), 
+#             "Amnesty International Score (PTS)"  = mean(Amnesty, na.rm = TRUE),
+#             "Extrajudicial Killing Score (CIRI)" = mean(KILL, na.rm = TRUE),
+#             "Political Imprisonment Score (CIRI)" = mean(POLPRIS, na.rm = TRUE),
+#             "Torture Score (CIRI)" = mean(TORT, na.rm = TRUE), 
+#             "Disappearance Score (CIRI)" = mean(DISAP, na.rm = TRUE))
+# 
+# graph_data <- gather(trends, type, value, var_names) # Reformat data for graphs 
+# graph_data$type <- factor(graph_data$type, levels = var_names) # Converts labels to factors to order plot facets 
+# 
+# # Relabel active_d for legend
+# for (i in 1:length(graph_data$active_d)){    
+#   if (graph_data$active_d[i] == 0){ 
+#     graph_data$active_d[i] <- "Other States" 
+#   }else if (graph_data$active_d[i] == 1){
+#     graph_data$active_d[i] <- "Active Participants"
+#   }
+# }
+# 
+# # Subset data to be graphed
+# graph1 <- subset(graph_data, (graph_data$type %in% var_names[1:4]))
+# graph2 <- subset(graph_data, (graph_data$type %in% var_names[5:8]))
+# 
+# # Construct matrices to call min and max values for y-axis on facet plots 
+# facetlims1 <- as.data.frame(cbind(year = c(rep(1992:2011, times = 4, each = 2)), 
+#                                   active_d = c(rep(0:1, times = 80)),
+#                                   value = c(rep(c(0,8), 20), rep(c(-0.5,1), 20), rep(c(0,2), 20), rep(c(0,2), 20))))
+# facetlims2 <- as.data.frame(cbind(year = c(rep(1992:2011, times = 4, each = 2)),
+#                                   active_d = c(rep(0:1, times = 80)),
+#                                   value = c(rep(c(1,5), 20), rep(c(1,5), 20), rep(c(0,2), 20), rep(c(0,2), 20))))
+# # Assign variable names
+# facetlims1$type <- rep(var_names[1:4], times = 1, each = 40)
+# facetlims2$type <- rep(var_names[5:8], times = 1, each = 40)
+# # Converts labels to factors to order plot facets 
+# facetlims1$type <- factor(facetlims1$type, levels = var_names) 
+# facetlims2$type <- factor(facetlims2$type, levels = var_names)
+# 
+# # Create plots
+# ## Figure 2
+# ggplot(graph1, aes(x=year, y=value, group=active_d)) +   
+#   geom_line(aes(linetype = factor(active_d))) + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
+#   geom_blank(data = facetlims1) + 
+#   labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
+#   #ggtitle("Average Respect for Human Rights by Participation, 1992-2011") +
+#   geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
+#   theme(legend.position= "bottom", legend.title=element_blank(), 
+#         plot.title = element_text(hjust = 0.5, size=14), 
+#         text = element_text(size = 13),
+#         axis.title = element_text(size = 13), axis.text = element_text(size = 10))
+# ggsave(paste0("present/fig2.png"), width = 9, height = 4.5, plot = last_plot(), device = "png", dpi = "retina")
 ```
 
 # Figure 3
 ```{r fig3, cache=TRUE, include=FALSE}
-# Compute global-year averages for democracies and non-democracies for all DVs
-trends <- data %>% group_by(YEAR, active_d) %>% 
-  filter(below_polity == 1) %>% 
-  summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
-            "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
-            "State Department Score (PTS)" = mean(State, na.rm = TRUE), 
-            "Amnesty International Score (PTS)"  = mean(Amnesty, na.rm = TRUE),
-            "Extrajudicial Killing Score (CIRI)" = mean(KILL, na.rm = TRUE),
-            "Political Imprisonment Score (CIRI)" = mean(POLPRIS, na.rm = TRUE),
-            "Torture Score (CIRI)" = mean(TORT, na.rm = TRUE), 
-            "Disappearance Score (CIRI)" = mean(DISAP, na.rm = TRUE))
-
-graph_data <- gather(trends, type, value, DVs) # Reformat data for graphs 
-graph_data$type <- factor(graph_data$type, levels = DVs) # Converts labels to factors to order plot facets 
-
-# Relabel active_d for legend
-for (i in 1:length(graph_data$active_d)){    
-  if (graph_data$active_d[i] == 0){ 
-    graph_data$active_d[i] <- "Other States" 
-  }else if (graph_data$active_d[i] == 1){
-    graph_data$active_d[i] <- "Active Participants"
-  }
-}
-
-# Subset data to be graphed
-graph1 <- subset(graph_data, (graph_data$type %in% DVs[1:4]))
-graph2 <- subset(graph_data, (graph_data$type %in% DVs[5:8]))
-
-# Adjust y-axis for Fariss data 
-facetlims1_auto <- facetlims1
-facetlims1_auto$value <- c(rep(c(0,8), 20), rep(c(-1,0.5), 20), rep(c(0,2), 20), rep(c(0,2), 20))
-
-# Create Plots
-# Figure 3
-ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +   
-  geom_line(aes(linetype = factor(active_d))) + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
-  geom_blank(data = facetlims1_auto) + 
-  labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
-  #ggtitle("Respect for Human Rights among Non-Democracies by Participation, 1992-2011") +
-  geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
-  theme(legend.position= "bottom", legend.title=element_blank(), 
-        plot.title = element_text(hjust = 0.5, size=14), 
-        text = element_text(size = 13),
-        axis.title = element_text(size = 13), axis.text = element_text(size = 10)) 
+# # Compute global-year averages for democracies and non-democracies for all var_names
+# trends <- data %>% group_by(year, active_d) %>% 
+#   filter(below_polity == 1) %>% 
+#   summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
+#             "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
+#             "State Department Score (PTS)" = mean(State, na.rm = TRUE), 
+#             "Amnesty International Score (PTS)"  = mean(Amnesty, na.rm = TRUE),
+#             "Extrajudicial Killing Score (CIRI)" = mean(KILL, na.rm = TRUE),
+#             "Political Imprisonment Score (CIRI)" = mean(POLPRIS, na.rm = TRUE),
+#             "Torture Score (CIRI)" = mean(TORT, na.rm = TRUE), 
+#             "Disappearance Score (CIRI)" = mean(DISAP, na.rm = TRUE))
+# 
+# graph_data <- gather(trends, type, value, var_names) # Reformat data for graphs 
+# graph_data$type <- factor(graph_data$type, levels = var_names) # Converts labels to factors to order plot facets 
+# 
+# # Relabel active_d for legend
+# for (i in 1:length(graph_data$active_d)){    
+#   if (graph_data$active_d[i] == 0){ 
+#     graph_data$active_d[i] <- "Other States" 
+#   }else if (graph_data$active_d[i] == 1){
+#     graph_data$active_d[i] <- "Active Participants"
+#   }
+# }
+# 
+# # Subset data to be graphed
+# graph1 <- subset(graph_data, (graph_data$type %in% var_names[1:4]))
+# graph2 <- subset(graph_data, (graph_data$type %in% var_names[5:8]))
+# 
+# # Adjust y-axis for Fariss data 
+# facetlims1_auto <- facetlims1
+# facetlims1_auto$value <- c(rep(c(0,8), 20), rep(c(-1,0.5), 20), rep(c(0,2), 20), rep(c(0,2), 20))
+# 
+# # Create Plots
+# # Figure 3
+# ggplot(graph1, aes(x=year, y=value, group=active_d)) +   
+#   geom_line(aes(linetype = factor(active_d))) + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
+#   geom_blank(data = facetlims1_auto) + 
+#   labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
+#   #ggtitle("Respect for Human Rights among Non-Democracies by Participation, 1992-2011") +
+#   geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
+#   theme(legend.position= "bottom", legend.title=element_blank(), 
+#         plot.title = element_text(hjust = 0.5, size=14), 
+#         text = element_text(size = 13),
+#         axis.title = element_text(size = 13), axis.text = element_text(size = 10)) 
 ```
 
 ```{r, include=FALSE, cache=TRUE, include=FALSE}
@@ -263,17 +262,17 @@ ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +
 # #load("pic_data.RData")
 # #data.out <- data
 # cutoff_years <- c(2001, 2002, 2003, 2004, 2005) # Creat vectorof relevant cutoff years
-# DVs <- c("PHYSINT", "Latent", "State", "Amnesty", "KILL", "POLPRIS", "TORT", "DISAP") # Vector of dependent variable names
+# var_names <- c("PHYSINT", "Latent", "State", "Amnesty", "KILL", "POLPRIS", "TORT", "DISAP") # Vector of dependent variable names
 # 
 # # Function that creates dataset of states' average dependent variable values for before/after cutoff dates  
 # average_dv_pre_post <- function(year, df){
-#   post_years <- df %>% group_by(COW) %>% filter(YEAR >= year) %>% 
+#   post_years <- df %>% group_by(COW) %>% filter(year >= year) %>% 
 #     summarise(PHYSINT = mean(PHYSINT, na.rm = TRUE), Latent = mean(latentmean, na.rm = TRUE),
 #               State = mean(State, na.rm = TRUE), Amnesty = mean(Amnesty, na.rm = TRUE),
 #               KILL = mean(KILL, na.rm = TRUE), POLPRIS = mean(POLPRIS, na.rm = TRUE),
 #               TORT = mean(TORT, na.rm = TRUE), DISAP = mean(DISAP, na.rm = TRUE))
 #   post_years$pre_post <- 1
-#   pre_years <- df %>% group_by(COW) %>% filter(YEAR < year) %>% 
+#   pre_years <- df %>% group_by(COW) %>% filter(year < year) %>% 
 #     summarise(PHYSINT = mean(PHYSINT, na.rm = TRUE), Latent = mean(latentmean, na.rm = TRUE),
 #               State = mean(State, na.rm = TRUE), Amnesty = mean(Amnesty, na.rm = TRUE),
 #               KILL = mean(KILL, na.rm = TRUE), POLPRIS = mean(POLPRIS, na.rm = TRUE),
@@ -289,15 +288,15 @@ ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +
 # for(i in 1:length(cutoff_years)){
 #   for(j in 1:length(data.out$imputations)){data.out.ttest$imputations[[j]] <- average_dv_pre_post(cutoff_years[i], data.out$imputations[[j]])}
 #   cat("\n \n \n \n", "Analysis With Cutoff Year =", cutoff_years[i],"\n \n")
-#   for(k in 1:length(DVs)){
-#     out <- mi.t.test(data.out.ttest$imputations, x = DVs[k], y = "pre_post", alternative = c("two.sided"), var.equal = FALSE)
+#   for(k in 1:length(var_names)){
+#     out <- mi.t.test(data.out.ttest$imputations, x = var_names[k], y = "pre_post", alternative = c("two.sided"), var.equal = FALSE)
 #     print(out)
 #   }
 # }
 # # Function that gets country averages for all variables during a specified period
 # balance_data <- function(start_year, stop_year, df){
 #   out <- df %>% group_by(COW) %>% 
-#     filter(YEAR >= start_year & YEAR <= stop_year) %>%
+#     filter(year >= start_year & year <= stop_year) %>%
 #     summarise(active_d = mean(active_d), PHYSINT = mean(PHYSINT), 
 #               Latent = mean(latentmean),State = mean(State), Amnesty = mean(Amnesty),
 #               KILL = mean(KILL), POLPRIS = mean(POLPRIS), TORT = mean(TORT), 
@@ -321,159 +320,159 @@ ggplot(graph1, aes(x=YEAR, y=value, group=active_d)) +
 ```
 
 ```{r table23, results='asis', include=FALSE}
-############################################
-# Section 4. Linear Models
-############################################
-
-#-----------------------------------------------------------------------------------------
-# In this section we compute a series of linear models for panel data in order
-# to assess the correlation between participation in the RDI program and changes
-# in state human rights practices. First, we load the data and define functions to compute
-# standard errors and four linear panel models from imputed datasets (Part A). All models are 
-# the same, with the exception of the addition of control variables and the decomposition of 
-# the participation variable by level of democracy. The first model is commented extensively, 
-# all others follow the same series of commands. We then use these functions to conduct our 
-# analysis and present the results (Part B). 
-#-----------------------------------------------------------------------------------------
-
-#----------------------------------
-# Part A. Define relevant functions  
-#----------------------------------
-
-# Re-load data
-load("dataverse_files/pic_data.RData")
-data.out <- data
-# Set number of imputations
-imps <- length(data.out$imputations)
-
-# Define Function to Compute Variances from Imputed Datasets
-mi.ses <- function(betas, st.errors){
-  t_one <- apply(st.errors, MARGIN= 2, function(x) ((1/(length(x))) * sum(x^2)))
-  t_two <- apply(betas, MARGIN= 2, function(x) sum((x - mean(x))^2 /(length(x) - 1)) *(1 + (1/length(x))))
-  t_one + t_two
-}
-
-# General Function for Model 1
-mod_1 <- function(DV, LAG_DV){
-  # Step 1. Create empty matrices to store estimated coefficients and standard errors computed for each imputed dataset 
-  betas <- matrix(NA, nrow = imps, ncol = 2) # Matrix for estimated coefficients 
-  st.errors <- matrix(NA, nrow = imps, ncol = 2) # Matrix for standard errors 
-  
-  # Step 2. Create formula 
-  IVs <- paste("active_t", substitute(LAG_DV), sep = "+") # Paste together covariates
-  fmla <- formula(paste(substitute(DV), IVs, sep = "~")) # Paste on DV and convert to formula
-  
-  # Step 3. Estimate linear model and save standard errors for each imputed dataset
-  for (i in 1:imps){  
-    mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "YEAR"), effect ="twoways", model="within") # Compute linear panel model 
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) # Compute country level cluster robust standard errors
-    betas[i,] <- mod[,1] # Save estimated coefficients
-    st.errors[i,] <- mod[,2] # Save clustered standard errors
-  }
-  
-  # Step 4. Compute estimated coefficients and standard errors across all imputed datasets
-  beta_estimates <- colMeans(betas) # Compute mean of estimated coefficients across imputed datasets 
-  crse_estimates <- mi.ses(betas, st.errors) # Compute standard errors across imputed datasets
-  
-  # Step 5. Make placeholder plm object and insert correct values for estimated coefficients and standard errors so that results can be presented in a table 
-  mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "YEAR"), effect ="twoways", model="within") # create placeholder plm object
-  for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} # Overwrite plm coefficients with correct coefficients
-  diag(mod$vcov) <- crse_estimates # Overwrite diagonal of plm variance-covariance matrix with correct variances
-  
-  # Step 6. Return plm object 
-  mod
-}
-
-# General Function for Model 2
-mod_2 <- function(DV, LAG_DV){
-  betas <- matrix(NA, nrow = imps, ncol = 3) 
-  st.errors <- matrix(NA, nrow = imps, ncol = 3) 
-  IVs <- paste("Dem_Part", "Auto_Part", substitute(LAG_DV), sep = "+") 
-  fmla <- formula(paste(substitute(DV), IVs, sep = "~")) 
-  for (i in 1:imps){  
-    mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "YEAR"), effect ="twoways", model="within") 
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
-    betas[i,] <- mod[,1] 
-    st.errors[i,] <- mod[,2] 
-  }
-  beta_estimates <- colMeans(betas) 
-  crse_estimates <- mi.ses(betas, st.errors) 
-  mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "YEAR"), effect ="twoways", model="within") 
-  for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} 
-  diag(mod$vcov) <- crse_estimates 
-  mod
-}
-
-# General Function for Model 3
-mod_3 <- function(DV, LAG_DV){
-  betas <- matrix(NA, nrow = imps, ncol = 10) 
-  st.errors <- matrix(NA, nrow = imps, ncol = 10) 
-  IVs <- paste("active_t", "ucdp_type3", "gtd", "trans", "polity2", "log_pop", "log_gdppc", "log_UStrade", "log_USmilaid", substitute(LAG_DV), sep = "+") 
-  fmla <- formula(paste(substitute(DV), IVs, sep = "~")) 
-  for (i in 1:imps){  
-    mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "YEAR"), effect ="twoways", model="within") 
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
-    betas[i,] <- mod[,1] 
-    st.errors[i,] <- mod[,2] 
-  }
-  beta_estimates <- colMeans(betas) 
-  crse_estimates <- mi.ses(betas, st.errors) 
-  mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "YEAR"), effect ="twoways", model="within") 
-  for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} 
-  diag(mod$vcov) <- crse_estimates 
-  mod
-}
-
-# General Function for Model 4
-mod_4 <- function(DV, LAG_DV){
-  betas <- matrix(NA, nrow = imps, ncol = 11) 
-  st.errors <- matrix(NA, nrow = imps, ncol = 11) 
-  IVs <- paste("Dem_Part", "Auto_Part", "ucdp_type3", "gtd", "trans", "polity2", "log_pop", "log_gdppc", "log_UStrade", "log_USmilaid", substitute(LAG_DV), sep = "+") 
-  fmla <- formula(paste(substitute(DV), IVs, sep = "~")) 
-  for (i in 1:imps){  
-    mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "YEAR"), effect ="twoways", model="within") 
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
-    betas[i,] <- mod[,1] 
-    st.errors[i,] <- mod[,2] 
-  }
-  beta_estimates <- colMeans(betas) 
-  crse_estimates <- mi.ses(betas, st.errors) 
-  mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "YEAR"), effect ="twoways", model="within") 
-  for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} 
-  diag(mod$vcov) <- crse_estimates 
-  mod
-}
-
-#---------------------------------
-# Part B. Run and Present Analysis  
-#---------------------------------
-
-# Define standard fomatting features of tables
-covariate_names <- c("Participation", "Democratic participation", "Autocratic participation", "Internal conflicts",
-                     "Terrorist attacks", "Transitional state", "Polity score", "Log population",
-                     "Log GDP per capita", "Log US trade", "Log US military assistance")
-fe_line <- list(c("Fixed effects", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"))
-footnote <- c("Note: All models include country and year fixed effects and a dependent variable lagged one year. Country level", 
-              "cluster-robust standard errors in parentheses. $^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01")
-  
-  #c("All models include country and year fixed effects and a dependent variable lagged one year.",
-   #           "Country level cluster-robust standard errors in parentheses. $^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01")
-title1 <- "Participation in RDI program and state respect for human rights, 1992-2011"
-
-# Run analysis and produce tables 
-stargazer(mod_1(PHYSINT, lag_physint), mod_2(PHYSINT, lag_physint), mod_3(PHYSINT, lag_physint), mod_4(PHYSINT, lag_physint), 
-          mod_1(latentmean, lag_latentmean), mod_2(latentmean, lag_latentmean), mod_3(latentmean, lag_latentmean), mod_4(latentmean, lag_latentmean),
-          title = title1, covariate.labels = covariate_names, add.lines = fe_line, notes = footnote,
-          dep.var.labels = c("Physical Integrity Score (CIRI)", "Latent Variable Model (Fariss)"),
-          digits = 3, omit = c("lag_physint", "lag_latentmean"), omit.stat = c("adj.rsq", "f"), 
-          notes.append = FALSE, notes.align = "l")
-
-stargazer(mod_1(DISAP, lag_disap), mod_2(DISAP, lag_disap), mod_3(DISAP, lag_disap), mod_4(DISAP, lag_disap),  
-          mod_1(POLPRIS, lag_polpris), mod_2(POLPRIS, lag_polpris), mod_3(POLPRIS, lag_polpris), mod_4(POLPRIS, lag_polpris),
-          title = title1, covariate.labels = covariate_names, add.lines = fe_line, notes = footnote,
-          dep.var.labels = c("Disappearance Score (CIRI)", "Political Imprisonment Score (CIRI)"),
-          digits = 3, omit = c("lag_disap", "lag_polpris"), omit.stat = c("adj.rsq", "f"), 
-          notes.append = FALSE, notes.align = "l")
+# ############################################
+# # Section 4. Linear Models
+# ############################################
+# 
+# #-----------------------------------------------------------------------------------------
+# # In this section we compute a series of linear models for panel data in order
+# # to assess the correlation between participation in the RDI program and changes
+# # in state human rights practices. First, we load the data and define functions to compute
+# # standard errors and four linear panel models from imputed datasets (Part A). All models are 
+# # the same, with the exception of the addition of control variables and the decomposition of 
+# # the participation variable by level of democracy. The first model is commented extensively, 
+# # all others follow the same series of commands. We then use these functions to conduct our 
+# # analysis and present the results (Part B). 
+# #-----------------------------------------------------------------------------------------
+# 
+# #----------------------------------
+# # Part A. Define relevant functions  
+# #----------------------------------
+# 
+# # Re-load data
+# load("dataverse_files/pic_data.RData")
+# data.out <- data
+# # Set number of imputations
+# imps <- length(data.out$imputations)
+# 
+# # Define Function to Compute Variances from Imputed Datasets
+# mi.ses <- function(betas, st.errors){
+#   t_one <- apply(st.errors, MARGIN= 2, function(x) ((1/(length(x))) * sum(x^2)))
+#   t_two <- apply(betas, MARGIN= 2, function(x) sum((x - mean(x))^2 /(length(x) - 1)) *(1 + (1/length(x))))
+#   t_one + t_two
+# }
+# 
+# # General Function for Model 1
+# mod_1 <- function(DV, LAG_DV){
+#   # Step 1. Create empty matrices to store estimated coefficients and standard errors computed for each imputed dataset 
+#   betas <- matrix(NA, nrow = imps, ncol = 2) # Matrix for estimated coefficients 
+#   st.errors <- matrix(NA, nrow = imps, ncol = 2) # Matrix for standard errors 
+#   
+#   # Step 2. Create formula 
+#   IVs <- paste("active_t", substitute(LAG_DV), sep = "+") # Paste together covariates
+#   fmla <- formula(paste(substitute(DV), IVs, sep = "~")) # Paste on DV and convert to formula
+#   
+#   # Step 3. Estimate linear model and save standard errors for each imputed dataset
+#   for (i in 1:imps){  
+#     mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "year"), effect ="twoways", model="within") # Compute linear panel model 
+#     mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) # Compute country level cluster robust standard errors
+#     betas[i,] <- mod[,1] # Save estimated coefficients
+#     st.errors[i,] <- mod[,2] # Save clustered standard errors
+#   }
+#   
+#   # Step 4. Compute estimated coefficients and standard errors across all imputed datasets
+#   beta_estimates <- colMeans(betas) # Compute mean of estimated coefficients across imputed datasets 
+#   crse_estimates <- mi.ses(betas, st.errors) # Compute standard errors across imputed datasets
+#   
+#   # Step 5. Make placeholder plm object and insert correct values for estimated coefficients and standard errors so that results can be presented in a table 
+#   mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "year"), effect ="twoways", model="within") # create placeholder plm object
+#   for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} # Overwrite plm coefficients with correct coefficients
+#   diag(mod$vcov) <- crse_estimates # Overwrite diagonal of plm variance-covariance matrix with correct variances
+#   
+#   # Step 6. Return plm object 
+#   mod
+# }
+# 
+# # General Function for Model 2
+# mod_2 <- function(DV, LAG_DV){
+#   betas <- matrix(NA, nrow = imps, ncol = 3) 
+#   st.errors <- matrix(NA, nrow = imps, ncol = 3) 
+#   IVs <- paste("Dem_Part", "Auto_Part", substitute(LAG_DV), sep = "+") 
+#   fmla <- formula(paste(substitute(DV), IVs, sep = "~")) 
+#   for (i in 1:imps){  
+#     mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "year"), effect ="twoways", model="within") 
+#     mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
+#     betas[i,] <- mod[,1] 
+#     st.errors[i,] <- mod[,2] 
+#   }
+#   beta_estimates <- colMeans(betas) 
+#   crse_estimates <- mi.ses(betas, st.errors) 
+#   mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "year"), effect ="twoways", model="within") 
+#   for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} 
+#   diag(mod$vcov) <- crse_estimates 
+#   mod
+# }
+# 
+# # General Function for Model 3
+# mod_3 <- function(DV, LAG_DV){
+#   betas <- matrix(NA, nrow = imps, ncol = 10) 
+#   st.errors <- matrix(NA, nrow = imps, ncol = 10) 
+#   IVs <- paste("active_t", "ucdp_type3", "gtd", "trans", "polity2", "log_pop", "log_gdppc", "log_UStrade", "log_USmilaid", substitute(LAG_DV), sep = "+") 
+#   fmla <- formula(paste(substitute(DV), IVs, sep = "~")) 
+#   for (i in 1:imps){  
+#     mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "year"), effect ="twoways", model="within") 
+#     mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
+#     betas[i,] <- mod[,1] 
+#     st.errors[i,] <- mod[,2] 
+#   }
+#   beta_estimates <- colMeans(betas) 
+#   crse_estimates <- mi.ses(betas, st.errors) 
+#   mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "year"), effect ="twoways", model="within") 
+#   for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} 
+#   diag(mod$vcov) <- crse_estimates 
+#   mod
+# }
+# 
+# # General Function for Model 4
+# mod_4 <- function(DV, LAG_DV){
+#   betas <- matrix(NA, nrow = imps, ncol = 11) 
+#   st.errors <- matrix(NA, nrow = imps, ncol = 11) 
+#   IVs <- paste("Dem_Part", "Auto_Part", "ucdp_type3", "gtd", "trans", "polity2", "log_pop", "log_gdppc", "log_UStrade", "log_USmilaid", substitute(LAG_DV), sep = "+") 
+#   fmla <- formula(paste(substitute(DV), IVs, sep = "~")) 
+#   for (i in 1:imps){  
+#     mod <- plm(fmla, data=data.out$imputations[[i]], index=c("COW", "year"), effect ="twoways", model="within") 
+#     mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
+#     betas[i,] <- mod[,1] 
+#     st.errors[i,] <- mod[,2] 
+#   }
+#   beta_estimates <- colMeans(betas) 
+#   crse_estimates <- mi.ses(betas, st.errors) 
+#   mod <- plm(fmla, data=data.out$imputations[[1]], index=c("COW", "year"), effect ="twoways", model="within") 
+#   for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]} 
+#   diag(mod$vcov) <- crse_estimates 
+#   mod
+# }
+# 
+# #---------------------------------
+# # Part B. Run and Present Analysis  
+# #---------------------------------
+# 
+# # Define standard fomatting features of tables
+# covariate_names <- c("Participation", "Democratic participation", "Autocratic participation", "Internal conflicts",
+#                      "Terrorist attacks", "Transitional state", "Polity score", "Log population",
+#                      "Log GDP per capita", "Log US trade", "Log US military assistance")
+# fe_line <- list(c("Fixed effects", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"))
+# footnote <- c("Note: All models include country and year fixed effects and a dependent variable lagged one year. Country level", 
+#               "cluster-robust standard errors in parentheses. $^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01")
+#   
+#   #c("All models include country and year fixed effects and a dependent variable lagged one year.",
+#    #           "Country level cluster-robust standard errors in parentheses. $^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01")
+# title1 <- "Participation in RDI program and state respect for human rights, 1992-2011"
+# 
+# # Run analysis and produce tables 
+# stargazer(mod_1(PHYSINT, lag_physint), mod_2(PHYSINT, lag_physint), mod_3(PHYSINT, lag_physint), mod_4(PHYSINT, lag_physint), 
+#           mod_1(latentmean, lag_latentmean), mod_2(latentmean, lag_latentmean), mod_3(latentmean, lag_latentmean), mod_4(latentmean, lag_latentmean),
+#           title = title1, covariate.labels = covariate_names, add.lines = fe_line, notes = footnote,
+#           dep.var.labels = c("Physical Integrity Score (CIRI)", "Latent Variable Model (Fariss)"),
+#           digits = 3, omit = c("lag_physint", "lag_latentmean"), omit.stat = c("adj.rsq", "f"), 
+#           notes.append = FALSE, notes.align = "l")
+# 
+# stargazer(mod_1(DISAP, lag_disap), mod_2(DISAP, lag_disap), mod_3(DISAP, lag_disap), mod_4(DISAP, lag_disap),  
+#           mod_1(POLPRIS, lag_polpris), mod_2(POLPRIS, lag_polpris), mod_3(POLPRIS, lag_polpris), mod_4(POLPRIS, lag_polpris),
+#           title = title1, covariate.labels = covariate_names, add.lines = fe_line, notes = footnote,
+#           dep.var.labels = c("Disappearance Score (CIRI)", "Political Imprisonment Score (CIRI)"),
+#           digits = 3, omit = c("lag_disap", "lag_polpris"), omit.stat = c("adj.rsq", "f"), 
+#           notes.append = FALSE, notes.align = "l")
 ```
 
 
