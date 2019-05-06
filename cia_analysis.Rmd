@@ -160,12 +160,12 @@ for (i in 1:length(graph_data2$active_d)){
 }
 
 # Construct matrices to call min and max values for y-axis on facet plots
-var_limits2 <- as.data.frame(cbind(year = c(rep(1992:2011, times = 4, each = 2)),
-                                   active_d = c(rep(0:1, times = 40)),
-                                   value = c(rep(c(0,8),    20), 
-                                             rep(c(-0.5,1), 20), 
-                                             rep(c(0,2),    20), 
-                                             rep(c(0,2),    20))))
+var_limits2 <- as_tibble(cbind(year = c(rep(1992:2011, times = 4, each = 2)),
+                               active_d = c(rep(0:1, times = 40)),
+                               value = c(rep(c(0,8),    20), 
+                                         rep(c(-0.5,1), 20), 
+                                         rep(c(0,2),    20), 
+                                         rep(c(0,2),    20))))
 
 # Assign variable names
 var_limits2$type <- rep(var_names[1:4], times = 1, each = 40)
@@ -199,51 +199,66 @@ ggsave(paste0("present/fig2.png"),
 ```
 
 # Figure 3
-```{r fig3, cache=TRUE, include=FALSE}
-# # Compute global-year averages for democracies and non-democracies for all var_names
-# trends <- data %>% group_by(year, active_d) %>% 
-#   filter(below_polity == 1) %>% 
-#   summarise("Physical Integrity Score (CIRI)" = mean(PHYSINT, na.rm = TRUE),
-#             "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
-#             "State Department Score (PTS)" = mean(State, na.rm = TRUE), 
-#             "Amnesty International Score (PTS)"  = mean(Amnesty, na.rm = TRUE),
-#             "Extrajudicial Killing Score (CIRI)" = mean(KILL, na.rm = TRUE),
-#             "Political Imprisonment Score (CIRI)" = mean(POLPRIS, na.rm = TRUE),
-#             "Torture Score (CIRI)" = mean(TORT, na.rm = TRUE), 
-#             "Disappearance Score (CIRI)" = mean(DISAP, na.rm = TRUE))
-# 
-# graph_data <- gather(trends, type, value, var_names) # Reformat data for graphs 
-# graph_data$type <- factor(graph_data$type, levels = var_names) # Converts labels to factors to order plot facets 
-# 
-# # Relabel active_d for legend
-# for (i in 1:length(graph_data$active_d)){    
-#   if (graph_data$active_d[i] == 0){ 
-#     graph_data$active_d[i] <- "Other States" 
-#   }else if (graph_data$active_d[i] == 1){
-#     graph_data$active_d[i] <- "Active Participants"
-#   }
-# }
-# 
-# # Subset data to be graphed
-# graph1 <- subset(graph_data, (graph_data$type %in% var_names[1:4]))
-# graph2 <- subset(graph_data, (graph_data$type %in% var_names[5:8]))
-# 
-# # Adjust y-axis for Fariss data 
-# facetlims1_auto <- facetlims1
-# facetlims1_auto$value <- c(rep(c(0,8), 20), rep(c(-1,0.5), 20), rep(c(0,2), 20), rep(c(0,2), 20))
-# 
-# # Create Plots
-# # Figure 3
-# ggplot(graph1, aes(x=year, y=value, group=active_d)) +   
-#   geom_line(aes(linetype = factor(active_d))) + theme_bw() + facet_wrap(~type, ncol=2, scales = "free") +
-#   geom_blank(data = facetlims1_auto) + 
-#   labs(x = "Year", y = "Lower Score = More Abuse; Higher Score = More Respect") +
-#   #ggtitle("Respect for Human Rights among Non-Democracies by Participation, 1992-2011") +
-#   geom_vline(xintercept = seq(2001, 2005, by = 0.001), colour="grey", linetype = "solid", alpha = 0.01) +
-#   theme(legend.position= "bottom", legend.title=element_blank(), 
-#         plot.title = element_text(hjust = 0.5, size=14), 
-#         text = element_text(size = 13),
-#         axis.title = element_text(size = 13), axis.text = element_text(size = 10)) 
+```{r fig3, cache=TRUE}
+# Computing global-year averages for democracies and non-democracies for all var_names
+trends_3 <- data_final %>% 
+  group_by(year, active_d) %>% 
+  filter(below_polity == 1) %>%
+  summarise("Physical Integrity Score (CIRI)"      = mean(physint, na.rm = TRUE),
+            "Latent Variable Model Score (Fariss)" = mean(latentmean, na.rm = TRUE),
+            "Political Imprisonment Score (CIRI)"  = mean(polpris, na.rm = TRUE),
+            "Disappearance Score (CIRI)"           = mean(disap, na.rm = TRUE))
+
+# Formats the data to be graphed and makes the data facet on var_name
+graph_data3 <- gather(trends_3, type, value, var_names)
+graph_data3$type <- factor(graph_data3$type, levels = var_names) 
+
+# Relabel active_d for legend using a loop
+for (i in 1:length(graph_data3$active_d)){
+  if (graph_data3$active_d[i] == 0){
+    graph_data3$active_d[i] <- "Other States"
+  }
+  else if (graph_data3$active_d[i] == 1){
+    graph_data3$active_d[i] <- "Active Participants"
+  }
+}
+
+# Adjust y-axis for Fariss data
+var_limits3 <- as_tibble(cbind(year = c(rep(1992:2011, times = 4, each = 2)),
+                                   active_d = c(rep(0:1, times = 40)),
+                                   value = c(rep(c(0,8),    20), 
+                                             rep(c(-1,0.5), 20), 
+                                             rep(c(0,2),    20), 
+                                             rep(c(0,2),    20))))
+
+# Assign variable names
+var_limits3$type <- rep(var_names[1:4], times = 1, each = 40)
+
+# Converts labels to factors to order plot facets
+var_limits3$type <- factor(var_limits3$type, levels = var_names)
+
+# Create Plots
+# Figure 3
+ggplot(graph_data3, aes(x = year, y = value, group = active_d)) +
+  geom_line(aes(linetype = factor(active_d))) + 
+  geom_vline(xintercept = seq(2001, 2005, by = 0.001), 
+             colour="grey", linetype = "solid", 
+             alpha = 0.01) +
+  geom_blank(data = var_limits3) +
+  facet_wrap(~type, ncol=2, scales = "free") +
+  labs(x = "Year", 
+       y = "Lower Score = More Abuse; Higher Score = More Respect") +
+  theme_bw() + 
+  theme(legend.position = "bottom", legend.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5, size=14), 
+        text = element_text(size = 13, family = "Times"),
+        axis.title = element_text(size = 10), axis.text = element_text(size = 10))
+
+# Saving the plot output for the presentation
+ggsave(paste0("present/fig3.png"), 
+       width = 9, height = 4.5, 
+       plot = last_plot(), 
+       device = "png", dpi = "retina")
 ```
 
 ```{r, include=FALSE, cache=TRUE, include=FALSE}
