@@ -24,48 +24,53 @@ library("lmtest")
 library("janitor")
 ```
 
-```{r, results='asis', cache=TRUE}
-## Data: There are three datasets used in this analysis: 
+```{r, cache=TRUE}
+## Data: Originally there were three datasets used in analysis: 
 # 1. "pic_data_not_imputed.RData" - this is the initial dataset before
 #     imputation 
 # 2. "pic_data_imputed.RData" - this is the initial imputed dataset, contraining
 #     observations from 1991-2011 
 # 3. "pic_data.RData" - this is the final dataset used in analysis
 
-
 # Loading in the data created by author of the paper (unable to run the data
 # myself because of the 40 hour run time necessary)
 
-# Descriptive Statistics of Non-Imputed Dataset
-## Non-imputed data is the data without inferences made about the data in the dataset
-load("dataverse_files/pic_data_not_imputed.RData") 
+# Average of the imputed datasets for plotting (pic_data.RData). 
+## This is the only dataset that was used for the creation of the plots in the
+## paper. The other .RData files present in the dataverse_files folder are
+## unnecessary and remnants of the data pre-processing. For that reason, I will
+## only be including this file in my code.
+### This replaces the existing data (non-imputed dataset output) variable. Unsure
+### of the intent of this by the author, but I don't believe that this is the
+### intended outcome.
+load("dataverse_files/pic_data.RData") 
 
-# Descriptative Statistics Imputed Dataset
-## Imputed data includes data that includes inferences about data in the dataset
-## This data is loaded in as a "large amelia" which is the way that the missing
-## data has been imputed. This is a statistical computing technique.
-### This dataset consists of 9 different imputations. I will only be using 1 of
-### these.
-load("dataverse_files/pic_data_imputed.RData") # Load Imputed Data
+# Retrieving number of imputations in the dataset
+imps <- length(data$imputations)
 
-### The following is original because the data that I had downloaded had some
-### maddeningly named variables with strange capitalizations that were
-### unnecessary. The below just cleans up the names of variables in the dataset
-data <- data %>% clean_names()
+# Creating a key of the country codes to be later rematched with the average of
+# the imputed data. When the average of the imputed data is taken, the contents
+# of the country variable are deleted and this is a way to restore that
+# information.
 
-# Setting the number of imputations...
-imps <- length(data.out$imputations) # Set number of imputations
+# Creating the country key
+data_country <- data$imputations[[1]] %>% 
+  distinct(COW, country)
+
+# Average of imputed dataset  
+data_analyze <- (data$imputations[[1]] + data$imputations[[2]] + 
+                   data$imputations[[3]] + data$imputations[[4]] + 
+                   data$imputations[[5]] + data$imputations[[6]] + 
+                   data$imputations[[7]] + data$imputations[[8]] + 
+                   data$imputations[[9]])/imps
+
+# Joining the datasets and cleaning up variable names for sanity sake.
+data_final <- inner_join(data_country, data_analyze, 
+                         by = "COW", suffix = c(".c", ".a")) %>% 
+  select(-country.a, country = country.c) %>% 
+  clean_names()
 ```
 
-```{r, cache=TRUE, include=FALSE}
-dataCountry <- select(data, c("YEAR", "COW", "country", "ucdp_type3", "gtd", "log_USmilaid"))
-
-# TSCS Plots of Saudi Arabia and Niger. Need to look up what TSCS plots are and
-# why they take so long to load because that is incredibly annoying. Also, these
-# plots don't seem to have been used in the actual publication.
-# Global Terrorism Database
-# tscsPlot(data.out, cs = "670", main = "GTD for Saudi Arabia", var = "gtd", ylim = c(-150, 150))
-```
 
 # Figure 1
 ```{r fig1, cache=TRUE, include=FALSE}
