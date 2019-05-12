@@ -602,8 +602,26 @@ The extension is looking at the way that a country's human rights rating would c
 ## active_t = active treatment and active_d = active data. I believe this is a 
 ## result of the imputation which was used to fill in data gaps.
 
+## In exploring the data, I found that it was difficult ot pinpoint the year in 
+## which the country became an active participant in the RDI program specifically.
+## It seems like there is some other factor that effects that data since it ranges
+## from 1992 to 2011. Most countries have an active indicator in 1992, which would
+## be impossible for the RDI program since the program only because active in 2001.
+data_final %>%  
+  filter(active_t == 1) %>% 
+  glimpse() %>% 
+  ggplot(aes(x = year, y = physint)) +
+    geom_point() + 
+    facet_wrap(~country) 
 
+data_final %>% 
+  filter(active_t == 1) %>% 
+  distinct(cow, .keep_all = TRUE) %>% 
+  arrange(year) 
+```
 
+```{r diff_means}
+# This data was not used in the presentation of a figure in the paper.
 
 # Conduct a series of difference-of-means tests comparing global human rights
 # practices before and after the onset of the RDI program (Part A); and a series
@@ -674,6 +692,7 @@ The extension is looking at the way that a country's human rights rating would c
 #     print(out)
 # }
 ```
+
 
 ```{r extension}
 
