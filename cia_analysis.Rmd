@@ -55,6 +55,8 @@ imps <- length(data$imputations)
 # information.
 
 # Creating the country key
+## COW is the unique country ID given to each country (the number of the
+## countries is a bit strange), while country is the actual name of the coutnry.
 data_country <- data$imputations[[1]] %>% 
   distinct(COW, country)
 
@@ -73,6 +75,18 @@ data_final <- inner_join(data_country, data_analyze,
                          by = "COW", suffix = c(".c", ".a")) %>% 
   select(-country.a, country = country.c) %>% 
   clean_names()
+
+## Some data notes:
+### cow: unique country id
+### country: country name written out
+### cyear: country id concatenated with the year [CCCYYYY] (some countries have a 2 digit cow so length varies)
+### year: year of data
+### t: unknown
+### active_d: indicator for whether the country was an active participant or transporter?? [not quite sure]
+### active_t: indicator for whether the country was an active participant or transporter?? [not quite sure]
+      ## In the pre-processing code, it is stated that "t" means treatment (this may imply that "d" means data and        ## "t" means treatment)
+### The rest of the variables are numeric and based upon the CIRI and Farris
+###  data. Scoring the countries' human rights ratings on a variety of scales.
 ```
 
 (@enos_paper)
@@ -579,8 +593,18 @@ stargazer(mod_1(DISAP, lag_disap), mod_2(DISAP, lag_disap),
 ```
 
 # Extension
-
+The extension is looking at the way that a country's human rights rating would change with the adoption of, participation in, or support of the CIA's RDI program. Using an indicator in the dataset, I was able to construct a profile for each of the different years to compare countries participating in and not participating in the program. An interesting thing to note in the dataset is that once a country was participating in the program, none of them backed out.
 ```{r, include=FALSE, cache=TRUE}
+## In the data pre-processing done, the values for active participation are
+## hard coded in. Not sure what the source of the data is, but assuming that it
+## is reliable and without error. The data also includes active_t and active_d 
+## which isn't very well documented, but I have reached the assumption that 
+## active_t = active treatment and active_d = active data. I believe this is a 
+## result of the imputation which was used to fill in data gaps.
+
+
+
+
 # Conduct a series of difference-of-means tests comparing global human rights
 # practices before and after the onset of the RDI program (Part A); and a series
 # of difference-of-means tests to check the comparability of participants and
