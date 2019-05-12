@@ -265,6 +265,321 @@ ggsave(paste0("present/fig3.png"),
 ```
 
 # Tables
+```{r setting_models, results='asis', cache=TRUE}
+# This block is devoted to the definition of the different models that are 
+# used in the creation of the table for the analysis. The blocks with the tables
+# follow after. The general structure of the construction of the models is 
+# (1) to intialize and empty data set to be appended to later, (2) setting
+# up the formula to be used in the linear model, (3) calculating the model,
+# (4) extracting the coefficients for each imputation, (5) aggregating these,
+# (6) inputting these numbers into a plm object whcih will be the direct output 
+# of the table.
+
+# Creates a function to compute the variance across the imputations. The value
+# outputted from this function will be used in the table and will be the
+# standard error shown. [se = standard error, betas = estimate coefficients] The
+# 2 in the apply function is the margin which means that the function will be
+# applied to the columns of whatever the model inputted is.
+aggregate_se <- function(betas, se){
+  # Calculating the variance for the standard errors
+  t_one <- apply(se, 2, 
+                 function(x) sum(x^2)/length(x) )
+  
+  # Calculating the variance for the estimate coefficients
+  t_two <- apply(betas, 2, 
+                 function(x) sum((x - mean(x))^2 / (length(x) - 1)) * (1 + (1 / length(x))) )
+  
+  # Adding the variances and returning the total variance
+  t_one + t_two
+}
+
+# General Function for Model 1
+mod_1 <- function(DV, LAG_DV){
+  ## Creating an empty matrix to be used to store the future values for the
+  ## estimated coefficients (betas), and the standard errors (std.error).
+  betas <- matrix(NA, nrow = imps, ncol = 2) # Matrix for estimated coefficients 
+  st.errors <- matrix(NA, nrow = imps, ncol = 2) # Matrix for standard errors 
+  
+  ## This will be a formula used to build the model
+  fmla <- formula(paste0(substitute(DV), "~ active_t +", substitute(LAG_DV)))
+  
+  # Create a linear model and save standard errors for each imputed dataset
+  for (i in 1:imps){
+    ## plm is a linear model for panel data: will allow us to save standard errors
+    ## for the imputed dataset
+    mod <- plm(fmla, 
+               data=data$imputations[[i]], 
+               index=c("COW", "YEAR"), 
+               effect ="twoways", model="within") 
+    
+    # Computing the country level cluster robust standard errors
+    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
+    
+    # Saving the relevant values for each of the imputations: estimate
+    # coefficients and standard errors. These will be later aggregated to
+    # calculate the values used in the table
+    ## Estimate Coefficients
+    betas[i,] <- mod[,1]
+    ## Standard Errors
+    st.errors[i,] <- mod[,2] 
+  }
+  
+  # Aggregated the estimate coefficient and standard error for all of the
+  # imputations. This will be the value in the table.
+  ## Mean estimate coefficient
+  beta_estimates <- colMeans(betas)  
+  ## Aggregated standard error: uses the function created above
+  crse_estimates <- aggregate_se(betas, st.errors) 
+  
+  # Inserting the correct coefficient and standard error values into the plm
+  # object to be inputted into the table
+  ## Creates a placeholder plm object using the first imputation
+  mod <- plm(fmla, data = data$imputations[[1]], 
+             index=c("COW", "YEAR"), effect ="twoways", model="within")
+  
+  ## Replacing the values of the plm object
+  for(i in 1:length(colMeans(betas))){
+    mod$coefficients[[i]] <- beta_estimates[i]
+  }
+  
+  ## Replacing the variances using the diagonal of the plm variance-covariance matrix
+  diag(mod$vcov) <- crse_estimates
+  
+  ## Outputting the model
+  mod
+}
+
+# General Function for Model 2
+mod_2 <- function(DV, LAG_DV){
+  ## Creating an empty matrix to be used to store the future values for the
+  ## estimated coefficients (betas), and the standard errors (std.error).
+  betas <- matrix(NA, nrow = imps, ncol = 3)
+  st.errors <- matrix(NA, nrow = imps, ncol = 3)
+  
+  ## This will be a formula used to build the model
+  fmla <- formula(paste0(substitute(DV)," ~ Dem_Part + Auto_Part +", substitute(LAG_DV)))
+  
+  # Create a linear model and save standard errors for each imputed dataset
+  for (i in 1:imps){
+    ## plm is a linear model for panel data: will allow us to save standard errors
+    ## for the imputed dataset
+    mod <- plm(fmla, 
+               data = data$imputations[[i]], 
+               index=c("COW", "YEAR"), 
+               effect ="twoways", model="within")
+    
+    # Computing the country level cluster robust standard errors
+    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group"))
+    
+    # Saving the relevant values for each of the imputations: estimate
+    # coefficients and standard errors. These will be later aggregated to
+    # calculate the values used in the table
+    ## Estimate Coefficients
+    betas[i,] <- mod[,1]
+    ## Standard Errors
+    st.errors[i,] <- mod[,2]
+  }
+
+  # Aggregated the estimate coefficient and standard error for all of the
+  # imputations. This will be the value in the table.
+  ## Mean estimate coefficient
+  beta_estimates <- colMeans(betas)  
+  ## Aggregated standard error: uses the function created above
+  crse_estimates <- aggregate_se(betas, st.errors) 
+  
+  # Inserting the correct coefficient and standard error values into the plm
+  # object to be inputted into the table
+  ## Creates a placeholder plm object using the first imputation
+  mod <- plm(fmla, data = data$imputations[[1]], 
+             index=c("COW", "YEAR"), effect ="twoways", model="within")
+  
+  ## Replacing the values of the plm object
+  for(i in 1:length(colMeans(betas))){
+    mod$coefficients[[i]] <- beta_estimates[i]
+  }
+  
+  ## Replacing the variances using the diagonal of the plm variance-covariance matrix
+  diag(mod$vcov) <- crse_estimates
+  
+  ## Outputting the model
+  mod 
+}
+
+# General Function for Model 3
+mod_3 <- function(DV, LAG_DV){
+  ## Creating an empty matrix to be used to store the future values for the
+  ## estimated coefficients (betas), and the standard errors (std.error).
+  betas <- matrix(NA, nrow = imps, ncol = 10)
+  st.errors <- matrix(NA, nrow = imps, ncol = 10)
+  
+  ## This will be a formula used to build the model
+  fmla <- formula(paste0(substitute(DV), "~ active_t + ucdp_type3 + gtd + trans + 
+                         polity2 + log_pop + log_gdppc + log_UStrade + log_USmilaid +", 
+                         substitute(LAG_DV)))
+  
+  # Create a linear model and save standard errors for each imputed dataset
+  for (i in 1:imps){
+    ## plm is a linear model for panel data: will allow us to save standard errors
+    ## for the imputed dataset
+    mod <- plm(fmla, 
+               data = data$imputations[[i]], 
+               index=c("COW", "YEAR"), 
+               effect ="twoways", model="within")
+    
+    # Computing the country level cluster robust standard errors
+    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group"))
+    
+    # Saving the relevant values for each of the imputations: estimate
+    # coefficients and standard errors. These will be later aggregated to
+    # calculate the values used in the table
+    ## Estimate Coefficients
+    betas[i,] <- mod[,1]
+    ## Standard Errors
+    st.errors[i,] <- mod[,2]
+  }
+  
+  # Aggregated the estimate coefficient and standard error for all of the
+  # imputations. This will be the value in the table.
+  ## Mean estimate coefficient
+  beta_estimates <- colMeans(betas)  
+  ## Aggregated standard error: uses the function created above
+  crse_estimates <- aggregate_se(betas, st.errors) 
+  
+  # Inserting the correct coefficient and standard error values into the plm
+  # object to be inputted into the table
+  ## Creates a placeholder plm object using the first imputation
+  mod <- plm(fmla, data = data$imputations[[1]], 
+             index=c("COW", "YEAR"), effect ="twoways", model="within")
+  
+  ## Replacing the values of the plm object
+  for(i in 1:length(colMeans(betas))){
+    mod$coefficients[[i]] <- beta_estimates[i]
+  }
+  
+  ## Replacing the variances using the diagonal of the plm variance-covariance matrix
+  diag(mod$vcov) <- crse_estimates
+  
+  ## Outputting the model
+  mod
+}
+
+# General Function for Model 4
+mod_4 <- function(DV, LAG_DV){
+  ## Creating an empty matrix to be used to store the future values for the
+  ## estimated coefficients (betas), and the standard errors (std.error).
+  betas <- matrix(NA, nrow = imps, ncol = 11)
+  st.errors <- matrix(NA, nrow = imps, ncol = 11)
+  
+  ## This will be a formula used to build the model
+  fmla <- formula(paste0(substitute(DV), "~ Dem_Part + Auto_Part + ucdp_type3 + gtd + 
+                         trans + polity2 + log_pop + log_gdppc + log_UStrade + log_USmilaid +", 
+                         substitute(LAG_DV)))
+  
+  # Create a linear model and save standard errors for each imputed dataset
+  for (i in 1:imps){
+    ## plm is a linear model for panel data: will allow us to save standard errors
+    ## for the imputed dataset
+    mod <- plm(fmla, 
+               data = data$imputations[[i]], 
+               index=c("COW", "YEAR"), 
+               effect ="twoways", model="within")
+    
+    # Computing the country level cluster robust standard errors
+    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group"))
+    
+    # Saving the relevant values for each of the imputations: estimate
+    # coefficients and standard errors. These will be later aggregated to
+    # calculate the values used in the table
+    ## Estimate Coefficients
+    betas[i,] <- mod[,1]
+    ## Standard Errors
+    st.errors[i,] <- mod[,2]
+  }
+  
+  # Aggregated the estimate coefficient and standard error for all of the
+  # imputations. This will be the value in the table.
+  ## Mean estimate coefficient
+  beta_estimates <- colMeans(betas)  
+  ## Aggregated standard error: uses the function created above
+  crse_estimates <- aggregate_se(betas, st.errors) 
+  
+  # Inserting the correct coefficient and standard error values into the plm
+  # object to be inputted into the table
+  ## Creates a placeholder plm object using the first imputation
+  mod <- plm(fmla, data = data$imputations[[1]], 
+             index=c("COW", "YEAR"), effect ="twoways", model="within")
+  
+  ## Replacing the values of the plm object
+  for(i in 1:length(colMeans(betas))){
+    mod$coefficients[[i]] <- beta_estimates[i]
+  }
+  
+  ## Replacing the variances using the diagonal of the plm variance-covariance matrix
+  diag(mod$vcov) <- crse_estimates
+  
+  ## Outputting the model
+  mod
+}
+```
+
+```{r table_setup}
+# Defining the characteristics for the stargazer object
+# Setting the covariate labels (those on the left-hand side)
+covariate_names <- c("Participation", "Democratic participation", "Autocratic participation", 
+                     "Internal conflicts", "Terrorist attacks", "Transitional state", 
+                     "Polity score", "Log population", "Log GDP per capita", "Log US trade", 
+                     "Log US military assistance")
+
+# Setting up the line to show fixed effects
+fe_line <- list(c("Fixed effects", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"))
+
+# Adding a footnote
+footnote <- c("All models include country and year fixed effects and a 
+              dependent variable lagged one year. Country level",
+              "cluster-robust standard errors in parentheses. 
+              $^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01")
+
+# Setting the title
+title1 <- "Participation in RDI program and state respect for human rights, 1992-2011"
+```
+
+
+```{r table2, results='asis', cache=TRUE}
+# Run analysis and produce tables
+## Table 1 for our analysis (table 2 in the paper)
+stargazer(mod_1(PHYSINT, lag_physint), mod_2(PHYSINT, lag_physint),
+          mod_3(PHYSINT, lag_physint), mod_4(PHYSINT, lag_physint),
+          mod_1(latentmean, lag_latentmean), mod_2(latentmean, lag_latentmean),
+          mod_3(latentmean, lag_latentmean), mod_4(latentmean, lag_latentmean),
+          header = FALSE, style = "apsr", title = title1, digits = 3, 
+          covariate.labels = covariate_names, add.lines = fe_line, 
+          notes = footnote, notes.append = FALSE, notes.align = "l",
+          font.size = "small", column.sep.width = "-8pt",
+          omit = c("lag_physint", "lag_latentmean"),
+          omit.stat = c("adj.rsq", "f"),
+          dep.var.labels = c("Physical Integrity Score (CIRI)", 
+                             "Latent Variable Model Score (Fariss)"))
+```
+
+```{r table3, results='asis', cache=TRUE}
+# Run analysis and produce tables
+## Table 2 for our analysis (table 3 in the paper)
+stargazer(mod_1(DISAP, lag_disap), mod_2(DISAP, lag_disap),
+          mod_3(DISAP, lag_disap), mod_4(DISAP, lag_disap),
+          mod_1(POLPRIS, lag_polpris), mod_2(POLPRIS, lag_polpris),
+          mod_3(POLPRIS, lag_polpris), mod_4(POLPRIS, lag_polpris),
+          header = FALSE, style = "apsr", title = title1, digits = 3, 
+          covariate.labels = covariate_names, add.lines = fe_line, 
+          notes = footnote, notes.append = FALSE, notes.align = "l",
+          font.size = "small", column.sep.width = "-8pt",
+          omit = c("lag_disap", "lag_polpris"),
+          omit.stat = c("adj.rsq", "f"),
+          dep.var.labels = c("Disappearance Score (CIRI)", 
+                             "Political Imprisonment Score (CIRI)"))
+```
+
+# Extension
+
 ```{r, include=FALSE, cache=TRUE}
 # Conduct a series of difference-of-means tests comparing global human rights
 # practices before and after the onset of the RDI program (Part A); and a series
@@ -336,200 +651,9 @@ ggsave(paste0("present/fig3.png"),
 # }
 ```
 
-```{r table23, results='asis', out.width='100%'}
-############################################
-# Section 4. Linear Models
-############################################
+```{r extension}
 
-#-----------------------------------------------------------------------------------------
-# In this section we compute a series of linear models for panel data in order
-# to assess the correlation between participation in the RDI program and changes
-# in state human rights practices. First, we load the data and define functions to compute
-# standard errors and four linear panel models from imputed datasets (Part A). All models are
-# the same, with the exception of the addition of control variables and the decomposition of
-# the participation variable by level of democracy. The first model is commented extensively,
-# all others follow the same series of commands. We then use these functions to conduct our
-# analysis and present the results (Part B).
-#-----------------------------------------------------------------------------------------
-
-#----------------------------------
-# Part A. Define relevant functions
-#----------------------------------
-
-# Creates a function to compute the variance across the imputations. The value
-# outputted from this function will be used in the table and will be the
-# standard error shown. [se = standard error, betas = estimate coefficients] The
-# 2 in the apply function is the margin which means that the function will be
-# applied to the columns of whatever the model inputted is.
-aggregate_se <- function(betas, se){
-  # Calculating the variance for the standard errors
-  t_one <- apply(se, 2, 
-                 function(x) sum(x^2)/length(x) )
-  
-  # Calculating the variance for the estimate coefficients
-  t_two <- apply(betas, 2, 
-                 function(x) sum((x - mean(x))^2 / (length(x) - 1)) * (1 + (1 / length(x))) )
-  
-  # Adding the variances and returning the total variance
-  t_one + t_two
-}
-
-# General Function for Model 1
-mod_1 <- function(DV, LAG_DV){
-  ## Creating an empty matrix to be used to store the future values for the
-  ## estimated coefficients (betas), and the standard errors (std.error).
-  betas <- matrix(NA, nrow = imps, ncol = 2) # Matrix for estimated coefficients 
-  st.errors <- matrix(NA, nrow = imps, ncol = 2) # Matrix for standard errors 
-  
-  ## This will be a formula used to build the model
-  fmla <- formula(paste0(substitute(DV), "~ active_t +", substitute(LAG_DV)))
-  
-  # Step 3. Estimate linear model and save standard errors for each imputed dataset
-  for (i in 1:imps){
-    ## plm is a linear model for panel data: will allow us to save standard errors
-    ## for the imputed dataset
-    mod <- plm(fmla, 
-               data=data$imputations[[i]], 
-               index=c("COW", "YEAR"), 
-               effect ="twoways", model="within") 
-    
-    # Computing the country level cluster robust standard errors
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group")) 
-    
-    # Saving the relevant values for each of the imputations: estimate
-    # coefficients and standard errors. These will be later aggregated to
-    # calculate the values used in the table
-    ## Estimate Coefficients
-    betas[i,] <- mod[,1]
-    ## Standard Errors
-    st.errors[i,] <- mod[,2] 
-  }
-  
-  # Aggregated the estimate coefficient and standard error for all of the
-  # imputations. This will be the value in the table.
-  ## Mean estimate coefficient
-  beta_estimates <- colMeans(betas)  
-  ## Aggregated standard error: uses the function created above
-  crse_estimates <- aggregate_se(betas, st.errors) 
-  
-  # Inserting the correct coefficient and standard error values into the plm
-  # object to be inputted into the table
-  ## Creates a placeholder plm object using the first imputation
-  mod <- plm(fmla, data = data$imputations[[1]], 
-             index=c("COW", "YEAR"), effect ="twoways", model="within")
-  
-  ## Replacing the values of the plm object
-  for(i in 1:length(colMeans(betas))){
-    mod$coefficients[[i]] <- beta_estimates[i]
-  }
-  
-  ## Replacing the variances using the diagonal of the plm variance-covariance matrix
-  diag(mod$vcov) <- crse_estimates
-  
-  ## Outputting the model
-  mod
-}
-
-# General Function for Model 2
-mod_2 <- function(DV, LAG_DV){
-  betas <- matrix(NA, nrow = imps, ncol = 3)
-  st.errors <- matrix(NA, nrow = imps, ncol = 3)
-  IVs <- paste("Dem_Part", "Auto_Part", substitute(LAG_DV), sep = "+")
-  fmla <- formula(paste(substitute(DV), IVs, sep = "~"))
-  for (i in 1:imps){
-    mod <- plm(fmla, data=data$imputations[[i]], index=c("COW", "YEAR"), effect ="twoways", model="within")
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group"))
-    betas[i,] <- mod[,1]
-    st.errors[i,] <- mod[,2]
-  }
-  beta_estimates <- colMeans(betas)
-  crse_estimates <- aggregate_se(betas, st.errors)
-  mod <- plm(fmla, data=data$imputations[[1]], index=c("COW", "YEAR"), effect ="twoways", model="within")
-  for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]}
-  diag(mod$vcov) <- crse_estimates
-  mod
-}
-
-# General Function for Model 3
-mod_3 <- function(DV, LAG_DV){
-  betas <- matrix(NA, nrow = imps, ncol = 10)
-  st.errors <- matrix(NA, nrow = imps, ncol = 10)
-  IVs <- paste("active_t", "ucdp_type3", "gtd", "trans", "polity2", "log_pop", "log_gdppc", "log_UStrade", "log_USmilaid", substitute(LAG_DV), sep = "+")
-  fmla <- formula(paste(substitute(DV), IVs, sep = "~"))
-  for (i in 1:imps){
-    mod <- plm(fmla, data=data$imputations[[i]], index=c("COW", "YEAR"), effect ="twoways", model="within")
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group"))
-    betas[i,] <- mod[,1]
-    st.errors[i,] <- mod[,2]
-  }
-  beta_estimates <- colMeans(betas)
-  crse_estimates <- aggregate_se(betas, st.errors)
-  mod <- plm(fmla, data=data$imputations[[1]], index=c("COW", "YEAR"), effect ="twoways", model="within")
-  for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]}
-  diag(mod$vcov) <- crse_estimates
-  mod
-}
-
-# General Function for Model 4
-mod_4 <- function(DV, LAG_DV){
-  betas <- matrix(NA, nrow = imps, ncol = 11)
-  st.errors <- matrix(NA, nrow = imps, ncol = 11)
-  IVs <- paste("Dem_Part", "Auto_Part", "ucdp_type3", "gtd", "trans", "polity2", "log_pop", "log_gdppc", "log_UStrade", "log_USmilaid", substitute(LAG_DV), sep = "+")
-  fmla <- formula(paste(substitute(DV), IVs, sep = "~"))
-  for (i in 1:imps){
-    mod <- plm(fmla, data=data$imputations[[i]], index=c("COW", "YEAR"), effect ="twoways", model="within")
-    mod <- coeftest(mod, vcovHC(mod, type = "HC3", cluster = "group"))
-    betas[i,] <- mod[,1]
-    st.errors[i,] <- mod[,2]
-  }
-  beta_estimates <- colMeans(betas)
-  crse_estimates <- aggregate_se(betas, st.errors)
-  mod <- plm(fmla, data=data$imputations[[1]], index=c("COW", "YEAR"), effect ="twoways", model="within")
-  for(i in 1:length(colMeans(betas))){mod$coefficients[[i]] <- beta_estimates[i]}
-  diag(mod$vcov) <- crse_estimates
-  mod
-}
-
-#---------------------------------
-# Part B. Run and Present Analysis
-#---------------------------------
-
-# Define standard fomatting features of tables
-covariate_names <- c("Participation", "Democratic participation", "Autocratic participation", "Internal conflicts",
-                     "Terrorist attacks", "Transitional state", "Polity score", "Log population",
-                     "Log GDP per capita", "Log US trade", "Log US military assistance")
-fe_line <- list(c("Fixed effects", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes"))
-footnote <- c("All models include country and year fixed effects and a dependent variable lagged one year. Country level",
-              "cluster-robust standard errors in parentheses. $^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01")
-
-  #c("All models include country and year fixed effects and a dependent variable lagged one year.",
-   #           "Country level cluster-robust standard errors in parentheses. $^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01")
-title1 <- "Participation in RDI program and state respect for human rights, 1992-2011"
-
-# Run analysis and produce tables
-## Table 1 for our analysis (table 2 in the paper)
-stargazer(mod_1(PHYSINT, lag_physint), mod_2(PHYSINT, lag_physint),
-          mod_3(PHYSINT, lag_physint), mod_4(PHYSINT, lag_physint),
-          mod_1(latentmean, lag_latentmean), mod_2(latentmean, lag_latentmean),
-          mod_3(latentmean, lag_latentmean), mod_4(latentmean, lag_latentmean),
-          header = FALSE, style = "apsr", title = title1, digits = 3, 
-          covariate.labels = covariate_names, add.lines = fe_line, 
-          notes = footnote, notes.append = FALSE, notes.align = "l",
-          omit = c("lag_physint", "lag_latentmean"),
-          omit.stat = c("adj.rsq", "f"),
-          dep.var.labels = c("Physical Integrity Score (CIRI)", 
-                             "Latent Variable Model Score (Fariss)"))
-
-## Table 2 for our analysis (table 3 in the paper)
-stargazer(mod_1(DISAP, lag_disap), mod_2(DISAP, lag_disap),
-          mod_3(DISAP, lag_disap), mod_4(DISAP, lag_disap),
-          mod_1(POLPRIS, lag_polpris), mod_2(POLPRIS, lag_polpris),
-          mod_3(POLPRIS, lag_polpris), mod_4(POLPRIS, lag_polpris),
-          header = FALSE, style = "apsr", title = title1, digits = 3, 
-          covariate.labels = covariate_names, add.lines = fe_line, 
-          notes = footnote, notes.append = FALSE, notes.align = "l",
-          omit = c("lag_disap", "lag_polpris"),
-          omit.stat = c("adj.rsq", "f"),
-          dep.var.labels = c("Disappearance Score (CIRI)", 
-                             "Political Imprisonment Score (CIRI)"))
 ```
+
+
+
