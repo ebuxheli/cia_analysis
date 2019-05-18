@@ -1,5 +1,5 @@
 ---
-title: "Replication of 'Partners in Crime: An Empirical Evaluation of the CIA Rendition, Detention, and Interrogation Program' by Schmidt and Sikkink <br/> <br/> ⚕️"
+title: "Replication of 'Partners in Crime: An Empirical Evaluation of the CIA Rendition, Detention, and Interrogation Program' by Schmidt and Sikkink"
 author: "Enxhi Buxheli"
 date: "`r Sys.Date()`"
 output:
@@ -80,13 +80,13 @@ class: center, middle, inverse
 class: center, middle
 # Figure 1: Global Human Rights Indicators
 ```{r echo = FALSE, warning = FALSE}
-include_graphics("present/fig1.png")
+include_graphics("figures/fig1.png")
 ```
 ---
 # What it shows...
 - Shading highlights the 2001–2005 period where other countries began to adopt RDI
 <br/><br/> 
-- CIRI data presents no change in human rights practices during the study period
+- CIRI data figuress no change in human rights practices during the study period
 <br/><br/> 
 - Fariss data shows that human rights practices have improved consistently since
 the end of the Cold War
@@ -97,14 +97,14 @@ class: center, middle
 
 # Table 1: The Participants
 ```{r echo = FALSE, warning = FALSE}
-include_graphics("present/countries.png")
+include_graphics("figures/countries.png")
 ```
 
 ---
 # What it shows...
 - There were 53 countries that participated in assisting the CIA
 <br/><br/>
-- Presents the variety of countries that participated
+- figuress the variety of countries that participated
   - The Open Society Justice Initiative provided data on who was an active participant
   - Stopovers, are where CIA flights were allowed to stop in relation to the RDI program
 
@@ -113,7 +113,7 @@ class: center, middle
 
 # Figure 2: Active Participants Human Rights Indicators
 ```{r echo = FALSE, warning = FALSE}
-include_graphics("present/fig2.png")
+include_graphics("figures/fig2.png")
 ```
 
 ---
@@ -137,7 +137,7 @@ class: center, middle
 
 # Table 2: Active Participants Human Rights Indicators
 ```{r echo = FALSE, warning = FALSE}
-include_graphics("present/table2.png")
+include_graphics("figures/table2.png")
 ```
 
 ---
@@ -145,7 +145,7 @@ class: center, middle
 
 # Table 3: Active Participants Human Rights Indicators
 ```{r echo = FALSE, warning = FALSE}
-include_graphics("present/table3.png")
+include_graphics("figures/table3.png")
 ```
 
 ---
