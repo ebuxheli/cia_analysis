@@ -5,8 +5,6 @@ output: pdf_document
 bibliography: bibliography.bib
 ---
 
-## TODO: Add bibliography
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
@@ -23,9 +21,10 @@ library("Amelia")
 library("MKmisc")
 library("lmtest")
 library("janitor")
+library("readr")
 ```
 
-```{r, cache=TRUE}
+```{r data_load, cache=TRUE}
 ## Data: Originally there were three datasets used in analysis: 
 # 1. "pic_data_not_imputed.RData" - this is the initial dataset before
 #     imputation 
@@ -82,14 +81,16 @@ data_final <- inner_join(data_country, data_analyze,
 ### cyear: country id concatenated with the year [CCCYYYY] (some countries have a 2 digit cow so length varies)
 ### year: year of data
 ### t: unknown
-### active_d: indicator for whether the country was an active participant or transporter?? [not quite sure]
-### active_t: indicator for whether the country was an active participant or transporter?? [not quite sure]
-      ## In the pre-processing code, it is stated that "t" means treatment (this may imply that "d" means data and        ## "t" means treatment)
+### active_d: indicator for whether the country was an active participant in some other sort of interrogation program.
+### active_t: indicator for whether the country was an active participant in the RDI program
+      ## In the pre-processing code, it is stated that "t" means treatment (this may imply that "d" means data and        
+      ## "t" means treatment) [treatment = RDI]
 ### The rest of the variables are numeric and based upon the CIRI and Farris
 ###  data. Scoring the countries' human rights ratings on a variety of scales.
 ```
 
-(@enos_paper)
+In (@cia_data).
+
 # Figure 1
 ```{r fig1, cache=TRUE}
 ### TODO: FIGURE OUT A BETTER NAMING CONVENTION FOR THE GRAPHS TO MAKE IT EASIER
@@ -146,7 +147,7 @@ ggplot(graph_data1, aes(x = year, y = value)) +
         axis.title = element_text(size = 10), axis.text = element_text(size = 10))
 
 # Saving the plot output for the presentation
-ggsave(paste0("present/fig1.png"), 
+ggsave(paste0("figures/fig1.png"), 
        width = 9, height = 4.5, 
        plot = last_plot(), 
        device = "png", dpi = "retina")
@@ -209,7 +210,7 @@ ggplot(graph_data2, aes(x = year, y = value, group = active_d)) +
         axis.title = element_text(size = 10), axis.text = element_text(size = 10))
 
 # Saving the plot output for the presentation
-ggsave(paste0("present/fig2.png"), 
+ggsave(paste0("figures/fig2.png"), 
        width = 9, height = 4.5, 
        plot = last_plot(), 
        device = "png", dpi = "retina")
@@ -272,12 +273,13 @@ ggplot(graph_data3, aes(x = year, y = value, group = active_d)) +
         axis.title = element_text(size = 10), axis.text = element_text(size = 10))
 
 # Saving the plot output for the presentation
-ggsave(paste0("present/fig3.png"), 
+ggsave(paste0("figures/fig3.png"), 
        width = 9, height = 4.5, 
        plot = last_plot(), 
        device = "png", dpi = "retina")
 ```
 
+\newpage
 # Tables
 ```{r setting_models, results='asis', cache=TRUE}
 # This block is devoted to the definition of the different models that are 
@@ -592,9 +594,12 @@ stargazer(mod_1(DISAP, lag_disap), mod_2(DISAP, lag_disap),
                              "Political Imprisonment Score (CIRI)"))
 ```
 
+\newpage
 # Extension
-The extension is looking at the way that a country's human rights rating would change with the adoption of, participation in, or support of the CIA's RDI program. Using an indicator in the dataset, I was able to construct a profile for each of the different years to compare countries participating in and not participating in the program. An interesting thing to note in the dataset is that once a country was participating in the program, none of them backed out.
-```{r, include=FALSE, cache=TRUE}
+The extension is looking at the way that a country's human rights rating would change with the adoption of, participation in, or support of the CIA's RDI program. Using an indicator in the dataset, I was able to construct a profile for each of the different years to compare countries participating in and not participating in the program. An interesting thing to note in the dataset is that once a country was participating in the program, the data indicated that none of the countries backed out. The original paper (@cia_paper), included a note saying that this data was not readily available in their original dataset. If this data were available, it would be interested to have a better view of what was going on.
+
+
+```{r extension_graph, cache=TRUE}
 ## In the data pre-processing done, the values for active participation are
 ## hard coded in. Not sure what the source of the data is, but assuming that it
 ## is reliable and without error. The data also includes active_t and active_d 
@@ -602,101 +607,199 @@ The extension is looking at the way that a country's human rights rating would c
 ## active_t = active treatment and active_d = active data. I believe this is a 
 ## result of the imputation which was used to fill in data gaps.
 
-## In exploring the data, I found that it was difficult ot pinpoint the year in 
-## which the country became an active participant in the RDI program specifically.
-## It seems like there is some other factor that effects that data since it ranges
-## from 1992 to 2011. Most countries have an active indicator in 1992, which would
-## be impossible for the RDI program since the program only because active in 2001.
-data_final %>%  
-  filter(active_t == 1) %>% 
-  glimpse() %>% 
-  ggplot(aes(x = year, y = physint)) +
-    geom_point() + 
-    facet_wrap(~country) 
+## The active_t variable serves as the indicator for when the country first began 
+## participating in the RDI program... Below I am looking to see (1) the country by
+## country impact of the humanr rights score that participation had and (2) the time
+## effect after joining....
+# data_final %>%  
+#   filter(active_t == 1) %>% 
+#   glimpse() %>% 
+#   ggplot(aes(x = year, y = physint)) +
+#     geom_point() + 
+#     facet_wrap(~country) 
 
+## Creating a plot with number of new active participants in the RDI program by year
 data_final %>% 
   filter(active_t == 1) %>% 
   distinct(cow, .keep_all = TRUE) %>% 
-  arrange(year) 
+  arrange(year) %>% 
+  count(year) %>% 
+  ggplot(aes(x = year, y = n)) +
+    geom_col(fill = "red") + 
+    labs(title = "Number of Countries Actively Adopting the RDI Program",
+         x = "Year",
+         y = "# of Countries") +
+    theme(text = element_text(family = "Times"))
+
+# Saving the plot above
+ggsave(paste0("figures/ext_countries.png"), 
+       width = 9, height = 4.5, 
+       plot = last_plot(), 
+       device = "png", dpi = "retina")
+
+## Creating a master list for the countries that are active participants. I will
+## be using this to construct a plot and table between actively participating
+## countries and non-active countries.
+### Master list with all years, RDI participants
+rdi_countries <- data_final %>% 
+  filter(active_t == 1) %>% 
+  distinct(cow, .keep_all = TRUE) %>% 
+  select(cow, country)
+
+
+# Joined list with countries by year to see what changes, if any, exist
+## This only contains countries active in the RDI program data across all years
+## recorded.
+joined_rdi <-  semi_join(data_final, rdi_countries, by = "cow") %>% 
+  mutate(rdi = 1) %>% 
+  group_by(year, rdi) %>% 
+  mutate("Physical Integrity" = mean(physint, na.rm = TRUE)) %>% 
+  gather(type, value, 
+         c("Physical Integrity"))
+
+## Contains countries without participation in the RDI program across all years
+## using the anti-join to create the list.
+joined_nrdi <- anti_join(data_final, joined_rdi, by = "cow") %>% 
+  mutate(rdi = 0) %>% 
+  group_by(year, rdi) %>% 
+  mutate("Physical Integrity" = mean(physint, na.rm = TRUE)) %>% 
+  gather(type, value, 
+         c("Physical Integrity"))
+
+## master list with all, now with an indicator of whether they are rdi countries 
+## or not and the phyint calculated
+joined_master <- full_join(joined_rdi, joined_nrdi) %>% 
+  group_by(year, rdi) %>% 
+  mutate("Physical Integrity" = mean(physint, na.rm = TRUE)) %>% 
+  gather(type, value, 
+         c("Physical Integrity"))
+
+# Plotting the physical integrity scores across the non-RDI countries.
+yr_notplot <- joined_master %>% 
+  filter(rdi == 0) %>% 
+  ggplot(aes(x = year, y = value)) +
+    geom_point(color = "blue") + 
+    geom_line(color = "blue") +
+    labs(title = "Physical Integrity Score by Year for non-RDI Countries",
+         x = "Year",
+         y = "Score") +
+    ylim(3.5, 6) +
+    theme(text = element_text(family = "Times"))
+
+# Saving the plot for non-RDI countries for use in the final paper
+ggsave("figures/ext_nonrdi.png", 
+       width = 9, height = 4.5, 
+       plot = yr_notplot, 
+       device = "png", dpi = "retina")
+
+
+# Breaking it down into years for when countries joined the RDI program...
+# This function will plot the human rights index for countries based on the year
+# that they became active participants in the RDI program
+rdi_year <- function(yr){
+  # Filtering by those countries whoe joined the RDI program in the program's 
+  # specified year. This then keeps the specified country and joins with the 
+  # original dataset in order to get all of the country data, not just that 
+  # for the years they were active in the RDI program. I then take the average
+  # of the physical integrity across the countries that joined the RDI program
+  # in the year indicated.
+  rdi_joined <- data_final %>% 
+    filter(active_t == 1, year == yr) %>% 
+    distinct(cow, .keep_all = TRUE) %>% 
+    select(cow, country) %>% 
+    semi_join(data_final, ., by = "cow") %>% 
+    group_by(year) %>%
+    summarise("Physical Integrity" = mean(physint, na.rm = TRUE)) %>% 
+    gather(type, value, 
+           c("Physical Integrity"))  
+
+  # Plotting the physical integrity scores across the countries.
+  yr_plot <- rdi_joined %>% 
+    ggplot(aes(x = year, y = value)) +
+      geom_point(color = "orange") + 
+      geom_line(color = "orange") +
+      geom_vline(xintercept = eval(as.integer(yr))) +
+      geom_point(data = joined_nrdi, aes(x = year, y = value), 
+                 color = "blue") +
+      geom_line(data = joined_nrdi, aes(x = year, y = value), 
+                color = "blue") +
+    ylim(3.5, 6) + 
+      labs(title = paste0("Physical Integrity Score by Year for RDI Activated in ",substitute(yr)),
+           subtitle = "RDI: orange, non-RDI: blue",
+           x = "Year",
+           y = "Score") +
+      theme(text = element_text(family = "Times")) 
+  
+  ggsave(paste0("figures/ext_", substitute(yr), ".png"), 
+       width = 9, height = 4.5, 
+       plot = yr_plot, 
+       device = "png", dpi = "retina")
+  
+  yr_plot
+}
+
+## Plotting and saving the plots for use in the final paper from the years that
+## there were countries joining the RDI program
+rdi_year("2001")
+rdi_year("2002")
+rdi_year("2003")
+rdi_year("2004")
+rdi_year("2005")
+
+# Plotting across all years of joining v. not joining
+ggplot(joined_rdi) +
+  geom_point(aes(x = year, y = value),
+             color = "orange") +
+  geom_line(aes(x = year, y = value),
+             color = "orange") +
+  geom_point(data = joined_nrdi, aes(x = year, y = value), 
+             colour = "blue") +
+  geom_line(data = joined_nrdi, aes(x = year, y = value), 
+             colour = "blue") +
+  ylim(3.5,6) +
+  labs(title = "Physical Integrity Score by Year for RDI v. non-RDI",
+       subtitle = "RDI: orange, non-RDI: blue",
+       x = "Year",
+       y = "Score") +
+  theme(text = element_text(family = "Times")) 
+
+ggsave(paste0("figures/ext_allcountries", ".png"), 
+       width = 9, height = 4.5, 
+       plot = last_plot(), 
+       device = "png", dpi = "retina")
+  
+# Test to ensure that the distinct countries worked properly
+# rdi_2001 <- data_final %>% 
+#   filter(active_t == 1 & year == 2001) %>% 
+#   distinct(cow, .keep_all = TRUE) %>% 
+#   select(cow, country)
 ```
 
-```{r diff_means}
-# This data was not used in the presentation of a figure in the paper.
+```{r extension_table, results='asis'}
+# Joined list with countries that are participating in the rdi program 
+# by year to see what changes, if any, exist betwee
+joined_rdi <- semi_join(data_final, rdi_countries, by = "cow")
 
-# Conduct a series of difference-of-means tests comparing global human rights
-# practices before and after the onset of the RDI program (Part A); and a series
-# of difference-of-means tests to check the comparability of participants and
-# non-participants before the beginning # of the RDI program (Part B).
+mod_rdi <- glm(data = joined_rdi, 
+               physint ~ dem_part + auto_part + ucdp_type3 + gtd + trans + polity2 + 
+                 log_pop + log_gdppc + log_u_strade + log_u_smilaid)
 
-# #---------------------------------------------------------------------------------------------
-# # Part A. Difference-of-Means Tests of Human Rights Before/After 2001, 2002, 2003, 2004, 2005
-# #---------------------------------------------------------------------------------------------
-# 
-# # Clear workspace and re-load data
-# #load("pic_data.RData")
-# #data.out <- data
-# cutoff_years <- c(2001, 2002, 2003, 2004, 2005) # Creat vectorof relevant cutoff years
-# var_names <- c("PHYSINT", "Latent", "State", "Amnesty", "KILL", "POLPRIS", "TORT", "DISAP") # Vector of dependent variable names
-# 
-# # Function that creates dataset of states' average dependent variable values for before/after cutoff dates  
-# average_dv_pre_post <- function(year, df){
-#   post_years <- df %>% group_by(COW) %>% filter(year >= year) %>% 
-#     summarise(PHYSINT = mean(PHYSINT, na.rm = TRUE), Latent = mean(latentmean, na.rm = TRUE),
-#               State = mean(State, na.rm = TRUE), Amnesty = mean(Amnesty, na.rm = TRUE),
-#               KILL = mean(KILL, na.rm = TRUE), POLPRIS = mean(POLPRIS, na.rm = TRUE),
-#               TORT = mean(TORT, na.rm = TRUE), DISAP = mean(DISAP, na.rm = TRUE))
-#   post_years$pre_post <- 1
-#   pre_years <- df %>% group_by(COW) %>% filter(year < year) %>% 
-#     summarise(PHYSINT = mean(PHYSINT, na.rm = TRUE), Latent = mean(latentmean, na.rm = TRUE),
-#               State = mean(State, na.rm = TRUE), Amnesty = mean(Amnesty, na.rm = TRUE),
-#               KILL = mean(KILL, na.rm = TRUE), POLPRIS = mean(POLPRIS, na.rm = TRUE),
-#               TORT = mean(TORT, na.rm = TRUE), DISAP = mean(DISAP, na.rm = TRUE))
-#   pre_years$pre_post <- 0
-#   out <- as.data.frame(rbind(pre_years, post_years))
-#   out
-# }
-# 
-# data.out.ttest <- data.out # Create object to hold datasets for analysis
-# 
-# # Run Analysis 
-# for(i in 1:length(cutoff_years)){
-#   for(j in 1:length(data.out$imputations)){data.out.ttest$imputations[[j]] <- average_dv_pre_post(cutoff_years[i], data.out$imputations[[j]])}
-#   cat("\n \n \n \n", "Analysis With Cutoff Year =", cutoff_years[i],"\n \n")
-#   for(k in 1:length(var_names)){
-#     out <- mi.t.test(data.out.ttest$imputations, x = var_names[k], y = "pre_post", alternative = c("two.sided"), var.equal = FALSE)
-#     print(out)
-#   }
-# }
-# # Function that gets country averages for all variables during a specified period
-# balance_data <- function(start_year, stop_year, df){
-#   out <- df %>% group_by(COW) %>% 
-#     filter(year >= start_year & year <= stop_year) %>%
-#     summarise(active_d = mean(active_d), PHYSINT = mean(PHYSINT), 
-#               Latent = mean(latentmean),State = mean(State), Amnesty = mean(Amnesty),
-#               KILL = mean(KILL), POLPRIS = mean(POLPRIS), TORT = mean(TORT), 
-#               DISAP = mean(DISAP), ucdp_type3 = mean(ucdp_type3), trans = mean(trans), 
-#               log_pop = mean(log_pop), log_gdppc = mean(log_gdppc), polity2 = mean(polity2), 
-#               gtd = mean(gtd), log_UStrade = mean(log_UStrade), log_USmilaid = mean(log_USmilaid))
-#   out <- as.data.frame(out)
-#   out
-# }
-# data.out.baltest <- data.out # Create object to hold datasets for analysis
-# vars <- c("PHYSINT", "Latent", "State", "Amnesty", "KILL", "POLPRIS", "TORT", "DISAP",
-#           "ucdp_type3", "trans", "log_pop", "log_gdppc", "polity2", "gtd", "log_UStrade", "log_USmilaid")
-# 
-# # Run Analysis 
-# for(j in 1:length(data.out$imputations)){data.out.baltest$imputations[[j]] <- balance_data(1998, 2000, data.out$imputations[[j]])} # Subset relevant data
-# cat("\n \n \n \n", "Balance between Participants and Non-Participants from 1998 until 2000 \n \n") # Print title
-# for(k in 1:length(vars)){ # Loop through difference of means tests for all variables and print results
-#     out <- mi.t.test(data.out.baltest$imputations, x = vars[k], y = "active_d", alternative = c("two.sided"), var.equal = FALSE)
-#     print(out)
-# }
+mod_nrdi <- glm(data = joined_nrdi, 
+                physint ~ dem_part + auto_part + ucdp_type3 + gtd + trans + polity2 + 
+                  log_pop + log_gdppc + log_u_strade + log_u_smilaid)
+
+cat("\\setcounter{table}{0}")
+stargazer(mod_rdi, mod_nrdi,
+          header = FALSE, style = "apsr", title = title1, digits = 3, 
+          covariate.labels = covariate_names, add.lines = fe_line, 
+          notes = footnote, notes.append = FALSE, notes.align = "l",
+          font.size = "small", column.sep.width = "-8pt",
+          omit.stat = c("adj.rsq", "f"),
+          dep.var.labels = "Physical Integrity Score (CIRI)") 
+
+# Saving the data to use stargazer in the final paper.
+write_rds(joined_rdi, "figures/rdi_data.rds")
+write_rds(joined_nrdi, "figures/nrdi_data.rds")
 ```
 
-
-```{r extension}
-
-```
-
-
-
+# References
